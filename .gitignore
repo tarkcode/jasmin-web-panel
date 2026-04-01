@@ -76,3 +76,10 @@ celerybeat-schedule
 celerybeat.pid
 
 .vagrant/
+
+github_personal_token.txt
+
+# AWS Key Pairs
+*.pem
+*.ppk
+jasmin-web-key.pem
