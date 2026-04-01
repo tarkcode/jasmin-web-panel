@@ -1,0 +1,73 @@
+================================================================================
+                    SMPP SERVER CONNECTION INFORMATION
+================================================================================
+
+SMPP Server Details:
+--------------------
+Host/IP Address:     16.16.92.247
+Port:                2775
+Protocol:            SMPP v3.4
+Bind Type:           Transceiver (or Transmitter/Receiver as needed)
+
+Connection Endpoint: 16.16.92.247:2775
+
+Credentials:
+-----------
+System ID:           [TO BE CREATED - Run create-smpp-user.sh]
+Password:            [TO BE CREATED - Run create-smpp-user.sh]
+System Type:         (leave empty or "SMPP")
+
+SMPP Settings:
+--------------
+Interface Version:   3.4 (0x34)
+Address TON:         1 (International)
+Address NPI:         1 (ISDN/E.164)
+Service Type:        (leave empty)
+
+Connection Parameters:
+---------------------
+Enquire Link:        30 seconds (recommended)
+Response Timeout:    60 seconds
+Reconnect Delay:     5 seconds
+
+Additional Services Available:
+-----------------------------
+HTTP API:            http://16.16.92.247:1401
+Web Management:      http://16.16.92.247:8999
+Telnet Management:   16.16.92.247:8990
+
+Server Location:
+---------------
+Region:              EU North 1 (Stockholm)
+Provider:            AWS EC2
+Instance Type:       t3.small (2 vCPU, 2 GB RAM)
+
+Support Contact:
+---------------
+For technical support or configuration assistance, please contact
+the server administrator.
+
+================================================================================
+                            SETUP INSTRUCTIONS
+================================================================================
+
+To create SMPP credentials for your provider:
+
+1. Run the user creation script:
+   ./create-smpp-user.sh
+
+2. Follow the prompts to create a username and password
+
+3. Share the generated credentials with your SMS provider
+
+4. Provider can then connect to: 16.16.92.247:2775
+
+================================================================================
+
+Notes:
+- Server is operational 24/7
+- All connections are logged for monitoring
+- TLS/SSL can be configured upon request
+- Throughput limits can be adjusted as needed
+
+================================================================================
