@@ -16,6 +16,7 @@ services:
       REDIS_URI: redis://redis:6379/1
       TELNET_HOST: jasmin
       SUBMIT_LOG: 1
+      GUNICORN_CMD_ARGS: "--timeout 120"
     volumes:
       - web_public:/app/public
       - web_logs:/app/logs
