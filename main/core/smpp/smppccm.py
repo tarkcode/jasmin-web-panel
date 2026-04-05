@@ -138,6 +138,19 @@ class SMPPCCM(TelnetConnection):
                 raise JasminSyntaxError(
                     detail=" ".join(self.telnet.match.group(1).split()))
         self.telnet.sendline('ok')
+        ok_index = self.telnet.expect([
+            r'.*(Error:.*)' + STANDARD_PROMPT,
+            r'.*' + INTERACTIVE_PROMPT,
+            r'.*' + STANDARD_PROMPT,
+        ])
+        if ok_index == 0:
+            raise JasminSyntaxError(
+                detail=" ".join(self.telnet.match.group(1).split()))
+        if ok_index == 1:
+            # Still in interactive mode, send 'ko' to cancel
+            self.telnet.sendline('ko')
+            self.telnet.expect(r'.*' + STANDARD_PROMPT)
+            raise JasminSyntaxError(detail='Failed to create connector')
         self.telnet.sendline('persist')
         self.telnet.expect(r'.*' + STANDARD_PROMPT)
         return {'cid': data['cid']}

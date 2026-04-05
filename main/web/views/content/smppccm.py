@@ -22,8 +22,14 @@ def smppccm_view_manage(request):
     if s == "list":
         response = smppccm.list()
     elif s == "add":
+        cid = request.POST.get("cid", "").strip()
+        if not cid or ' ' in cid:
+            return JsonResponse({
+                "message": str(_("CID cannot be empty or contain spaces. Use underscores instead.")),
+                "status": 400
+            }, status=400)
         smppccm.create(data=dict(
-            cid=request.POST.get("cid"),
+            cid=cid,
             host=request.POST.get("host"),
             port=request.POST.get("port"),
             username=request.POST.get("username"),
