@@ -48,6 +48,10 @@ def users_view_manage(request):
             )
             response["message"] = str(_("User added successfully!"))
         except Exception as e:
+            import traceback, logging
+            logging.getLogger('django.request').error(
+                "User add error: %s\n%s", str(e), traceback.format_exc()
+            )
             return JsonResponse({"message": str(e), "status": 400}, status=400)
     elif s == "edit":
         try:

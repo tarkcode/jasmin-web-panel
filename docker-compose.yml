@@ -24,6 +24,7 @@ services:
       - ./main/core/smpp/smppccm.py:/app/main/core/smpp/smppccm.py:ro
       - ./main/core/middleware.py:/app/main/core/middleware.py:ro
       - ./main/web/views/content/smppccm.py:/app/main/web/views/content/smppccm.py:ro
+      - ./main/web/views/content/users.py:/app/main/web/views/content/users.py:ro
     depends_on:
       - redis
       - db
