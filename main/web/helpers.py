@@ -69,7 +69,7 @@ def send_smpp(
                 short_message=part,
                 data_coding=encoding_flag,
                 esm_class=smpplib.consts.SMPP_MSGMODE_FORWARD,
-                registered_delivery=False,
+                registered_delivery=True,
             )
 
         client.read_once()
