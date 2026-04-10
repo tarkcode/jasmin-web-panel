@@ -51,29 +51,51 @@ def submit_logs_view(request):
             Q(uid__icontains=search_query)
         )
 
+    # Status categories:
+    #   delivered: DELIVRD (confirmed delivered by provider)
+    #   submitted: ESME_ROK, ESME_RINVNUMDESTS (accepted by Jasmin, pending delivery)
+    #   failed: UNDELIV, REJECTD, EXPIRED, DELETED, ESME_RDELIVERYFAILURE, etc.
+    DELIVERED_STATUSES = ['DELIVRD']
+    SUBMITTED_STATUSES = ['ESME_ROK', 'ESME_RINVNUMDESTS']
+    FAILED_STATUSES = [
+        'UNDELIV', 'REJECTD', 'EXPIRED', 'DELETED',
+        'ESME_RDELIVERYFAILURE', 'ESME_RSYSERR', 'ESME_RINVDFTMSGID',
+    ]
+
     # Apply status filter
-    if status_filter == 'success':
-        submit_logs = submit_logs.filter(status__in=['ESME_ROK', 'ESME_RINVNUMDESTS'])
+    if status_filter == 'delivered':
+        submit_logs = submit_logs.filter(status__in=DELIVERED_STATUSES)
+    elif status_filter == 'submitted':
+        submit_logs = submit_logs.filter(status__in=SUBMITTED_STATUSES)
     elif status_filter == 'fail':
-        submit_logs = submit_logs.filter(status='ESME_RDELIVERYFAILURE')
+        submit_logs = submit_logs.filter(status__in=FAILED_STATUSES)
     elif status_filter == 'unknown':
-        submit_logs = submit_logs.exclude(status__in=['ESME_ROK', 'ESME_RINVNUMDESTS', 'ESME_RDELIVERYFAILURE'])
+        submit_logs = submit_logs.exclude(
+            status__in=DELIVERED_STATUSES + SUBMITTED_STATUSES + FAILED_STATUSES
+        )
 
     # Calculate statistics (on all logs, not filtered)
     all_logs = SubmitLog.objects.all()
     stats = all_logs.aggregate(
         total_count=Count('id'),
-        success_count=Count(Case(
-            When(status__in=['ESME_ROK', 'ESME_RINVNUMDESTS'], then=1),
+        delivered_count=Count(Case(
+            When(status__in=DELIVERED_STATUSES, then=1),
+            output_field=IntegerField()
+        )),
+        submitted_count=Count(Case(
+            When(status__in=SUBMITTED_STATUSES, then=1),
             output_field=IntegerField()
         )),
         fail_count=Count(Case(
-            When(status='ESME_RDELIVERYFAILURE', then=1),
+            When(status__in=FAILED_STATUSES, then=1),
             output_field=IntegerField()
         )),
     )
-    # Calculate unknown count (all - success - fail)
-    stats['unknown_count'] = stats['total_count'] - stats['success_count'] - stats['fail_count']
+    # Calculate unknown count (all - delivered - submitted - fail)
+    stats['unknown_count'] = (
+        stats['total_count'] - stats['delivered_count'] -
+        stats['submitted_count'] - stats['fail_count']
+    )
 
     # Order and paginate
     submit_logs = submit_logs.order_by("-created_at")

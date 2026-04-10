@@ -51,6 +51,27 @@ def paginate(objects, per_page=24, page=1):
         paginated_objects = paginator.page(1)
     except EmptyPage:
         paginated_objects = paginator.page(paginator.num_pages)
+
+    # Build smart page range: first 3, current±2, last 3, with None for ellipsis
+    current = paginated_objects.number
+    total = paginator.num_pages
+    pages = set()
+    # Always show first 3 and last 3
+    for i in range(1, min(4, total + 1)):
+        pages.add(i)
+    for i in range(max(1, total - 2), total + 1):
+        pages.add(i)
+    # Show current ± 2
+    for i in range(max(1, current - 2), min(total, current + 2) + 1):
+        pages.add(i)
+    sorted_pages = sorted(pages)
+    # Insert None for gaps
+    smart_range = []
+    for i, p in enumerate(sorted_pages):
+        if i > 0 and p - sorted_pages[i - 1] > 1:
+            smart_range.append(None)  # ellipsis marker
+        smart_range.append(p)
+    paginated_objects.smart_page_range = smart_range
     return paginated_objects
 
 

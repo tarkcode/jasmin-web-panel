@@ -501,22 +501,28 @@ def gotConnection(conn, username, password):
                     continue
 
                 message_id = props.get("message-id")
-                if message_id not in qmap:
-                    logger.warning("Got dlr of unknown submit_sm: %s", message_id)
-                    yield chan.basic_ack(delivery_tag=msg.delivery_tag)
-                    continue
-
+                status_val = headers.get("message_status", "")
                 status_time = datetime.utcnow()
-                # update DB
+                logger.info("DLR received: msgid=%s status=%s", message_id, status_val)
+
+                # Update DB directly by msgid — don't rely on qmap since
+                # submit.sm.resp already popped it
                 update_sql = f"UPDATE {DB_TABLE} SET status = %s, status_at = %s WHERE msgid = %s;"
-                status_val = headers.get("message_status")
                 try:
                     cursor.execute(update_sql, (status_val, status_time, message_id))
                     db_conn.commit()
+                    if cursor.rowcount == 0:
+                        logger.warning("DLR: no DB row found for msgid=%s (status=%s)", message_id, status_val)
+                    else:
+                        logger.info("DLR: updated msgid=%s to status=%s", message_id, status_val)
                 except Exception as e:
                     logger.exception("Failed to update DLR status in DB: %s", e)
+                    try:
+                        db_conn.rollback()
+                    except Exception:
+                        pass
 
-                # remove from qmap (we got final status)
+                # remove from qmap if still there
                 qmap.pop(message_id, None)
                 yield chan.basic_ack(delivery_tag=msg.delivery_tag)
 

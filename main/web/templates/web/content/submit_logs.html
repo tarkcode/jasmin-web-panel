@@ -68,7 +68,8 @@
                         <label for="status_filter">{% trans "Status" %}</label>
                         <select name="status_filter" id="status_filter" class="form-control">
                             <option value="">{% trans "All Status" %}</option>
-                            <option value="success" {% if status_filter == 'success' %}selected{% endif %}>{% trans "Success" %}</option>
+                            <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>{% trans "Delivered" %}</option>
+                            <option value="submitted" {% if status_filter == 'submitted' %}selected{% endif %}>{% trans "Submitted" %}</option>
                             <option value="fail" {% if status_filter == 'fail' %}selected{% endif %}>{% trans "Failed" %}</option>
                             <option value="unknown" {% if status_filter == 'unknown' %}selected{% endif %}>{% trans "Unknown" %}</option>
                         </select>
@@ -116,7 +117,10 @@
                 <i class="fas fa-database"></i> {% trans "Total" %}: {{ stats.total_count|default:0 }}
             </span>
             <span class="badge badge-success badge-pill" style="font-size: 1rem; padding: 0.5rem 1rem;">
-                <i class="fas fa-check-circle"></i> {% trans "Success" %}: {{ stats.success_count|default:0 }}
+                <i class="fas fa-check-circle"></i> {% trans "Delivered" %}: {{ stats.delivered_count|default:0 }}
+            </span>
+            <span class="badge badge-info badge-pill" style="font-size: 1rem; padding: 0.5rem 1rem;">
+                <i class="fas fa-paper-plane"></i> {% trans "Submitted" %}: {{ stats.submitted_count|default:0 }}
             </span>
             <span class="badge badge-danger badge-pill" style="font-size: 1rem; padding: 0.5rem 1rem;">
                 <i class="fas fa-times-circle"></i> {% trans "Failed" %}: {{ stats.fail_count|default:0 }}
@@ -157,9 +161,11 @@
                         <td>{{ record.created_at }}</td>
                         <td>{{ record.status_at }}</td>
                         <td class="text-center">
-                            {% if record.status == 'ESME_ROK' or record.status == 'ESME_RINVNUMDESTS' %}
+                            {% if record.status == 'DELIVRD' %}
                                 <span class="badge badge-success">{{ record.status }}</span>
-                            {% elif record.status == 'ESME_RDELIVERYFAILURE' %}
+                            {% elif record.status == 'ESME_ROK' or record.status == 'ESME_RINVNUMDESTS' %}
+                                <span class="badge badge-info">{{ record.status }}</span>
+                            {% elif record.status == 'UNDELIV' or record.status == 'REJECTD' or record.status == 'EXPIRED' or record.status == 'DELETED' or record.status == 'ESME_RDELIVERYFAILURE' %}
                                 <span class="badge badge-danger">{{ record.status }}</span>
                             {% else %}
                                 <span class="badge badge-secondary">{{ record.status }}</span>
