@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0001_initial'),
+        ('core', '0004_submitlog_charge_alter_moroutersmodel_type_and_more'),
     ]
 
     operations = [
