@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'main.core',
     'main.users',
     'main.web',
+    'main.campaigns',
 ]
 
 MIDDLEWARE = [

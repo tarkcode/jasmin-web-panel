@@ -14,3 +14,8 @@ from .smpp import (
     MORoutersModel,
     MTRoutersModel,
 )
+
+from .fake_dlr import (
+    FakeDLRConnectorModel,
+    FakeDLRRouteModel,
+)

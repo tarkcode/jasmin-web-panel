@@ -1,7 +1,7 @@
-<footer class="sticky-footer bg-white">
-    <div class="container-fluid my-auto">
-        <div class="copyright my-auto">
-            <span>Made with <i class="fas fa-heart text-danger"></i> Jasmin SMPP Server {% now 'Y' %}</span>
-        </div>
+{% load i18n %}
+<footer class="sticky-footer">
+    <div class="d-flex justify-content-between align-items-center">
+        <span>© {% now 'Y' %} Jasmin Panel · v{{ VERSION }}</span>
+        <span>{% trans "Status" %}: <span class="status-pill success">{% trans "Operational" %}</span></span>
     </div>
 </footer>

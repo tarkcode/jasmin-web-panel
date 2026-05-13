@@ -1,0 +1,603 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "New campaign" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "New campaign" %}{% endblock page_title %}
+{% block extracss %}
+<style>
+.section-band {
+    background: var(--jp-slate-50);
+    border: 1px solid var(--jp-border);
+    border-radius: var(--jp-radius);
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--jp-text-muted);
+    margin-bottom: 12px;
+}
+
+.field-grid-3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 16px 18px; }
+.field-grid-2 { display:grid; grid-template-columns: repeat(2, 1fr); gap: 16px 18px; }
+@media (max-width: 991px) { .field-grid-3 { grid-template-columns: 1fr; } .field-grid-2 { grid-template-columns: 1fr; } }
+
+.upload-zone {
+    border: 2px dashed var(--jp-border-strong);
+    border-radius: var(--jp-radius);
+    padding: 18px;
+    text-align: center;
+    background: var(--jp-slate-50);
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.upload-zone.dragover { border-color: var(--jp-blue-600); background: var(--jp-blue-50); }
+.upload-zone .filename { font-family: var(--jp-mono); font-size: 13px; color: var(--jp-text); margin-top: 8px; }
+.upload-zone .hint { font-size: 12px; color: var(--jp-text-muted); margin-top: 4px; }
+
+.template-stats {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 14px;
+    padding: 14px;
+    background: var(--jp-slate-50);
+    border: 1px solid var(--jp-border);
+    border-radius: var(--jp-radius);
+}
+.template-stats ul { list-style: disc; padding-left: 22px; margin: 0; font-size: 13px; color: var(--jp-text-muted); line-height: 1.7; }
+.template-stats ul strong { color: var(--jp-text); font-weight: 600; font-feature-settings: 'tnum'; }
+
+.toggle {
+    position: relative;
+    display: inline-block;
+    width: 38px; height: 22px;
+    flex: none;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle .slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--jp-slate-300);
+    border-radius: 999px;
+    transition: background 150ms ease;
+}
+.toggle .slider::before {
+    position: absolute; content: ""; height: 16px; width: 16px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 150ms ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+.toggle input:checked + .slider { background: var(--jp-blue-600); }
+.toggle input:checked + .slider::before { transform: translateX(16px); }
+.toggle-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--jp-text); }
+
+.message-textarea-wrapper { position: relative; }
+.insert-var-btn {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: var(--jp-blue-600);
+    color: white;
+    border: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+}
+.insert-var-btn:hover { background: var(--jp-blue-700); }
+.insert-var-menu {
+    position: absolute; top: 42px; right: 8px;
+    background: white;
+    border: 1px solid var(--jp-border);
+    border-radius: var(--jp-radius);
+    box-shadow: var(--jp-shadow-md);
+    min-width: 200px;
+    padding: 6px;
+    z-index: 10;
+    display: none;
+}
+.insert-var-menu.show { display: block; }
+.insert-var-menu .item {
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--jp-text);
+    font-family: var(--jp-mono);
+}
+.insert-var-menu .item:hover { background: var(--jp-slate-100); }
+.insert-var-menu .empty { padding: 8px; color: var(--jp-text-muted); font-size: 12px; text-align: center; }
+
+.action-bar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    border-top: 1px solid var(--jp-border);
+    background: var(--jp-slate-50);
+    border-radius: 0 0 var(--jp-radius-lg) var(--jp-radius-lg);
+}
+
+.audience-row .quick-list-block,
+.audience-row .csv-block { display: none; }
+.audience-row[data-audience="csv"] .csv-block { display: block; }
+.audience-row[data-audience="quick_list"] .quick-list-block { display: block; }
+
+.scheduled-row { display: flex; align-items: center; gap: 24px; }
+.scheduled-row .radio-pair { display: inline-flex; align-items: center; gap: 14px; }
+.scheduled-row label.radio { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+.scheduled-row input[type="radio"] { accent-color: var(--jp-blue-600); }
+.scheduled-row #scheduled-at-wrapper { display: none; flex: 1; }
+.scheduled-row.is-scheduled #scheduled-at-wrapper { display: block; }
+</style>
+{% endblock extracss %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "New campaign" %}</h1>
+        <div class="ph-sub">{% trans "Compose a bulk SMS, choose an audience, and queue for delivery." %}</div>
+    </div>
+    <div class="ph-actions">
+        <a href="{% url 'campaigns:list' %}" class="btn btn-secondary btn-sm">{% trans "Cancel" %}</a>
+    </div>
+</div>
+
+{% include "web/includes/message.html" %}
+
+<form action="{% url 'campaigns:create' %}" method="post" enctype="multipart/form-data" id="campaign-form" class="campaign-form">{% csrf_token %}
+
+<div class="card mb-4">
+    <div class="section-band">{% trans "General" %}</div>
+    <div class="card-body">
+
+        <div class="field-grid-3">
+            <div class="form-group">
+                <label>{% trans "SMS Type" %}</label>
+                <select name="sms_type" class="form-control">
+                    {% for code, label in sms_type_choices %}
+                    <option value="{{ code }}" {% if form.sms_type == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{% trans "Sender ID" %}</label>
+                {% if sender_ids %}
+                <select name="sender_id" class="form-control" required>
+                    <option value="">{% trans "Select option" %}</option>
+                    {% for s in sender_ids %}
+                    <option value="{{ s.value }}" {% if form.sender_id == s.value %}selected{% endif %}>
+                        {{ s.value }}{% if s.label %} — {{ s.label }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">{% trans "Manage sender IDs in" %} <a href="/admin/campaigns/senderid/">Django admin</a>.</small>
+                {% else %}
+                <input type="text" name="sender_id" class="form-control" required maxlength="24"
+                       value="{{ form.sender_id|default:'' }}" placeholder="{% trans 'e.g. JASMIN' %}">
+                <small class="text-muted">{% trans "Add reusable sender IDs in" %} <a href="/admin/campaigns/senderid/">Django admin</a> {% trans "for a picker." %}</small>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>{% trans "Use Template" %}</label>
+                <select id="template-picker" class="form-control">
+                    <option value="">{% trans "Select option" %}</option>
+                    {% for t in templates %}
+                    <option value="{{ t.id }}">{{ t.name }} — {{ t.get_sms_type_display }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">{% trans "Loads the saved message body into the form below." %}</small>
+            </div>
+        </div>
+
+        <div class="field-grid-3 mt-1">
+            <div class="form-group">
+                <label>{% trans "Campaign Name" %}</label>
+                <input type="text" name="name" class="form-control" maxlength="120" required
+                       value="{{ form.name|default:'' }}" placeholder="{% trans 'Campaign name' %}">
+            </div>
+            <div class="form-group">
+                <label>{% trans "Encoding" %}</label>
+                <select name="encoding" class="form-control" id="encoding-select">
+                    {% for code, label in encoding_choices %}
+                    <option value="{{ code }}" {% if form.encoding == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{% trans "Audience" %}</label>
+                <select name="audience_source" class="form-control" id="audience-select">
+                    {% for code, label in audience_choices %}
+                    <option value="{{ code }}" {% if form.audience_source == code or audience_default == code and not form.audience_source %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="audience-row" id="audience-row" data-audience="{{ form.audience_source|default:audience_default }}">
+            <div class="form-group quick-list-block">
+                <label>{% trans "Quick Number" %}</label>
+                <textarea name="quick_list" class="form-control" rows="4"
+                          placeholder="{% trans 'Paste numbers separated by newline or comma — e.g. +919999900001, +919999900002…' %}">{{ form.quick_list|default:'' }}</textarea>
+                <small class="text-muted">{% trans "Up to 200,000 numbers. Invalid or duplicate entries are skipped automatically." %}</small>
+            </div>
+
+            <div class="csv-block">
+                <label>{% trans "Recipients CSV" %}</label>
+                <div class="upload-zone" id="upload-zone">
+                    <input type="file" name="recipients_csv" id="recipients-csv" accept=".csv,text/csv" style="display:none;">
+                    <div><i class="fas fa-file-csv" style="font-size:24px;color:var(--jp-blue-600);"></i></div>
+                    <div style="font-weight:600;margin-top:4px;font-size:14px;">{% trans "Drag CSV here or" %} <a href="#" id="pick-csv">{% trans "browse" %}</a></div>
+                    <div class="filename" id="upload-filename"></div>
+                    <div class="hint">{% trans "First row = headers. One column must be phone numbers; other columns become {placeholders}." %}</div>
+                </div>
+                <div class="form-group mt-2">
+                    <label>{% trans "Phone column" %} <span class="text-muted" style="font-weight:400;">{% trans "(optional)" %}</span></label>
+                    <input type="text" name="phone_column" class="form-control" placeholder="{% trans 'auto-detect — msisdn / phone / mobile / number' %}">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group message-textarea-wrapper">
+            <label>{% trans "Text Message" %}</label>
+            <textarea name="message_template" id="message-template" class="form-control" rows="5"
+                      placeholder="{% trans 'Hi {name}, your code is {otp}. Reply STOP to opt out.' %}"
+                      {% if form.is_rtl %}dir="rtl"{% endif %}>{{ form.message_template|default:'' }}</textarea>
+            <button type="button" class="insert-var-btn" id="insert-var-btn" title="{% trans 'Insert placeholder' %}">
+                <i class="fas fa-plus"></i>
+            </button>
+            <div class="insert-var-menu" id="insert-var-menu">
+                <div class="item" data-var="msisdn">{msisdn}</div>
+                <div id="insert-var-list">
+                    <div class="empty">{% trans "Upload CSV to see column placeholders" %}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="template-stats">
+            <ul>
+                <li>{% trans "Encoding" %}: <strong id="stat-encoding">GSM_7BIT</strong></li>
+                <li>{% trans "Length" %}: <strong id="stat-length">0</strong></li>
+                <li>{% trans "Messages" %}: <strong id="stat-messages">0</strong></li>
+                <li>{% trans "Per Message" %}: <strong id="stat-per">160</strong></li>
+                <li>{% trans "Remaining" %}: <strong id="stat-remaining">160</strong></li>
+            </ul>
+            <div class="toggle-row">
+                <label>{% trans "RTL" %}</label>
+                <span class="toggle">
+                    <input type="checkbox" id="is-rtl-toggle" name="is_rtl" value="1" {% if form.is_rtl %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="field-grid-2 mt-3">
+            <div class="form-group">
+                <label>{% trans "Message Validity" %}</label>
+                <select name="message_validity" class="form-control">
+                    {% for code, label in validity_choices %}
+                    <option value="{{ code }}" {% if form.message_validity == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">{% trans "Drop messages from the queue if not delivered within this window." %}</small>
+            </div>
+            <div class="form-group">
+                <label>{% trans "Send Method" %}</label>
+                <select name="send_method" class="form-control">
+                    <option value="smpp" {% if form.send_method == 'smpp' %}selected{% endif %}>SMPP</option>
+                    <option value="http" {% if form.send_method == 'http' %}selected{% endif %}>HTTP</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="field-grid-2 mt-1">
+            <div class="form-group">
+                <label>{% trans "Jasmin user" %} <span class="text-muted" style="font-weight:400;">{% trans "(optional)" %}</span></label>
+                <select name="user_uid" class="form-control">
+                    <option value="">{% trans "Default (environment credentials)" %}</option>
+                    {% for u in users_for_picker %}
+                    <option value="{{ u.uid }}" {% if form.user_uid == u.uid %}selected{% endif %}>{{ u.username }} — {{ u.uid }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>{% trans "Throttle (msgs/sec)" %}</label>
+                <input type="number" name="throttle_mps" class="form-control" min="1" max="1000"
+                       value="{{ form.throttle_mps|default:default_throttle }}">
+            </div>
+        </div>
+
+        <div class="form-group scheduled-row" id="scheduled-row">
+            <label class="m-0" style="font-weight:500;">{% trans "Is Scheduled" %}</label>
+            <div class="radio-pair">
+                <label class="radio"><input type="radio" name="is_scheduled" value="yes" {% if form.is_scheduled == "yes" %}checked{% endif %}> {% trans "Yes" %}</label>
+                <label class="radio"><input type="radio" name="is_scheduled" value="no" {% if form.is_scheduled != "yes" %}checked{% endif %}> {% trans "No" %}</label>
+            </div>
+            <div id="scheduled-at-wrapper">
+                <input type="datetime-local" name="scheduled_at" class="form-control" value="{{ form.scheduled_at|default:'' }}">
+            </div>
+        </div>
+
+    </div>
+
+    <div class="action-bar">
+        <button type="button" class="btn btn-secondary" id="btn-preview"><i class="fas fa-eye mr-1"></i> {% trans "View Preview" %}</button>
+        <button type="button" class="btn btn-secondary" id="btn-normalise"><i class="fas fa-magic mr-1"></i> {% trans "Normalize To GSM" %}</button>
+        <button type="button" class="btn btn-secondary" id="btn-save-template"><i class="fas fa-save mr-1"></i> {% trans "Save Template" %}</button>
+        <button type="submit" name="action" value="save" class="btn btn-secondary">{% trans "Save Draft" %}</button>
+        <button type="submit" name="action" value="start" class="btn btn-primary"><i class="fas fa-paper-plane mr-1"></i> {% trans "Submit" %}</button>
+    </div>
+</div>
+
+</form>
+
+<!-- Preview modal -->
+<div class="modal fade" id="preview-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Message preview" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div style="background:var(--jp-slate-50);border:1px solid var(--jp-border);border-radius:var(--jp-radius);padding:14px;font-family:var(--jp-mono);font-size:13px;white-space:pre-wrap;" id="preview-rendered"></div>
+                <div class="text-muted mt-2" style="font-size:12px;">{% trans "Sample placeholders are filled with the first uploaded row, or 'sample-value' when none is present." %}</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Template modal -->
+<div class="modal fade" id="save-template-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Save as template" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>{% trans "Template name" %}</label>
+                    <input type="text" id="template-name" class="form-control" maxlength="120" placeholder="{% trans 'e.g. OTP — login' %}">
+                    <small class="text-muted">{% trans "An existing template with the same name will be overwritten." %}</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                <button type="button" class="btn btn-primary" id="confirm-save-template">{% trans "Save" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+{% block extrajs %}
+<script>
+(function ($) {
+    var csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+
+    // ── CSV upload ───────────────────────────────────────────────────
+    var fileInput = document.getElementById('recipients-csv');
+    var zone = document.getElementById('upload-zone');
+    var pick = document.getElementById('pick-csv');
+    var nameOut = document.getElementById('upload-filename');
+    var detectedColumns = ['msisdn'];
+
+    pick.addEventListener('click', function (e) { e.preventDefault(); fileInput.click(); });
+    zone.addEventListener('click', function (e) { if (e.target.tagName !== 'A') fileInput.click(); });
+    fileInput.addEventListener('change', function () {
+        nameOut.textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+        readCsvHeaders();
+    });
+    ['dragenter', 'dragover'].forEach(function (ev) {
+        zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(function (ev) {
+        zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove('dragover'); });
+    });
+    zone.addEventListener('drop', function (e) {
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            nameOut.textContent = e.dataTransfer.files[0].name;
+            readCsvHeaders();
+        }
+    });
+
+    function readCsvHeaders() {
+        if (!fileInput.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var firstLine = e.target.result.split(/\r?\n/)[0] || '';
+            var cols = firstLine.split(/[,;\t|]/).map(function (c) { return c.trim().replace(/^"|"$/g, ''); });
+            detectedColumns = ['msisdn'].concat(cols);
+            renderInsertMenu();
+        };
+        var slice = fileInput.files[0].slice(0, 4096);
+        reader.readAsText(slice);
+    }
+
+    // ── Audience toggle ──────────────────────────────────────────────
+    var audienceSelect = document.getElementById('audience-select');
+    var audienceRow = document.getElementById('audience-row');
+    audienceSelect.addEventListener('change', function () {
+        audienceRow.dataset.audience = audienceSelect.value;
+    });
+
+    // ── Insert variable menu ─────────────────────────────────────────
+    var insertBtn = document.getElementById('insert-var-btn');
+    var insertMenu = document.getElementById('insert-var-menu');
+    var insertVarList = document.getElementById('insert-var-list');
+    var ta = document.getElementById('message-template');
+
+    insertBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        insertMenu.classList.toggle('show');
+    });
+    document.addEventListener('click', function (e) {
+        if (!insertMenu.contains(e.target) && e.target !== insertBtn && !insertBtn.contains(e.target)) {
+            insertMenu.classList.remove('show');
+        }
+    });
+
+    function renderInsertMenu() {
+        if (detectedColumns.length <= 1) {
+            insertVarList.innerHTML = '<div class="empty">Upload CSV to see column placeholders</div>';
+            return;
+        }
+        var html = '';
+        detectedColumns.slice(1).forEach(function (col) {
+            if (col) html += '<div class="item" data-var="' + col + '">{' + col + '}</div>';
+        });
+        insertVarList.innerHTML = html;
+    }
+
+    insertMenu.addEventListener('click', function (e) {
+        var item = e.target.closest('.item');
+        if (!item) return;
+        var token = '{' + item.dataset.var + '}';
+        var start = ta.selectionStart, end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + token + ta.value.substring(end);
+        ta.selectionStart = ta.selectionEnd = start + token.length;
+        ta.focus();
+        insertMenu.classList.remove('show');
+        updateStats();
+    });
+
+    // ── Live message stats ───────────────────────────────────────────
+    var encodingSelect = document.getElementById('encoding-select');
+    var statE = document.getElementById('stat-encoding');
+    var statL = document.getElementById('stat-length');
+    var statM = document.getElementById('stat-messages');
+    var statP = document.getElementById('stat-per');
+    var statR = document.getElementById('stat-remaining');
+
+    function detectEncoding(text) {
+        for (var i = 0; i < text.length; i++) {
+            if (text.charCodeAt(i) > 127) return 'UCS2';
+        }
+        return 'GSM_7BIT';
+    }
+
+    function updateStats() {
+        var t = ta.value || '';
+        var n = t.length;
+        var encOption = encodingSelect.value;
+        var enc;
+        if (encOption === 'gsm7') enc = 'GSM_7BIT';
+        else if (encOption === 'ucs2') enc = 'UCS2';
+        else enc = detectEncoding(t);
+        var single = enc === 'UCS2' ? 70 : 160;
+        var multi  = enc === 'UCS2' ? 67 : 153;
+        var parts = n === 0 ? 0 : (n <= single ? 1 : Math.ceil(n / multi));
+        var per = parts <= 1 ? single : multi;
+        var remaining = n === 0 ? single : (parts <= 1 ? single - n : parts * multi - n);
+        statE.textContent = enc;
+        statL.textContent = n;
+        statM.textContent = parts;
+        statP.textContent = per;
+        statR.textContent = remaining;
+    }
+    ta.addEventListener('input', updateStats);
+    encodingSelect.addEventListener('change', updateStats);
+    updateStats();
+
+    // ── RTL toggle ───────────────────────────────────────────────────
+    var rtlToggle = document.getElementById('is-rtl-toggle');
+    rtlToggle.addEventListener('change', function () {
+        ta.dir = rtlToggle.checked ? 'rtl' : 'ltr';
+    });
+
+    // ── Is Scheduled radio ───────────────────────────────────────────
+    var schedRow = document.getElementById('scheduled-row');
+    document.querySelectorAll('input[name="is_scheduled"]').forEach(function (el) {
+        el.addEventListener('change', function () {
+            if (el.value === 'yes' && el.checked) schedRow.classList.add('is-scheduled');
+            if (el.value === 'no' && el.checked)  schedRow.classList.remove('is-scheduled');
+        });
+        if (el.checked && el.value === 'yes') schedRow.classList.add('is-scheduled');
+    });
+
+    // ── Use Template ─────────────────────────────────────────────────
+    var tplPicker = document.getElementById('template-picker');
+    tplPicker.addEventListener('change', function () {
+        var id = tplPicker.value;
+        if (!id) return;
+        $.getJSON("/campaigns/templates/" + id + "/", function (d) {
+            if (d.status === 'ok') {
+                ta.value = d.body;
+                updateStats();
+            }
+        });
+    });
+
+    // ── Preview ──────────────────────────────────────────────────────
+    document.getElementById('btn-preview').addEventListener('click', function () {
+        var sampleVars = {};
+        detectedColumns.slice(1).forEach(function (col) { if (col) sampleVars[col] = 'sample-value'; });
+        $.post("{% url 'campaigns:template_preview' %}", {
+            csrfmiddlewaretoken: csrf,
+            body: ta.value,
+            sample_phone: '+91XXXXXXXXXX',
+            sample_vars: JSON.stringify(sampleVars),
+        }, function (d) {
+            document.getElementById('preview-rendered').textContent = d.preview || '(empty)';
+            $('#preview-modal').modal('show');
+        }, 'json');
+    });
+
+    // ── Normalize To GSM ─────────────────────────────────────────────
+    document.getElementById('btn-normalise').addEventListener('click', function () {
+        $.post("{% url 'campaigns:template_normalise' %}", {
+            csrfmiddlewaretoken: csrf,
+            body: ta.value,
+        }, function (d) {
+            if (d.status === 'ok') {
+                ta.value = d.normalised;
+                updateStats();
+                if (typeof toastr !== 'undefined') toastr.success('Normalised to GSM-7 character set', { closeButton: true });
+            }
+        }, 'json');
+    });
+
+    // ── Save Template ────────────────────────────────────────────────
+    document.getElementById('btn-save-template').addEventListener('click', function () {
+        if (!ta.value.trim()) {
+            if (typeof toastr !== 'undefined') toastr.warning('Write the message body first', { closeButton: true });
+            return;
+        }
+        document.getElementById('template-name').value = '';
+        $('#save-template-modal').modal('show');
+    });
+    document.getElementById('confirm-save-template').addEventListener('click', function () {
+        var name = document.getElementById('template-name').value.trim();
+        if (!name) return;
+        $.post("{% url 'campaigns:template_save' %}", {
+            csrfmiddlewaretoken: csrf,
+            name: name,
+            body: ta.value,
+            sms_type: document.querySelector('select[name=sms_type]').value,
+        }, function (d) {
+            if (d.status === 'ok') {
+                $('#save-template-modal').modal('hide');
+                if (typeof toastr !== 'undefined') toastr.success('Template saved', { closeButton: true });
+                // Add to picker if new
+                if (d.created) {
+                    var opt = new Option(name + ' — ' + document.querySelector('select[name=sms_type]').value, d.id);
+                    tplPicker.add(opt);
+                }
+            } else {
+                if (typeof toastr !== 'undefined') toastr.error(d.message || 'Failed to save', { closeButton: true });
+            }
+        }, 'json');
+    });
+
+})(jQuery);
+</script>
+{% endblock extrajs %}

@@ -1,56 +1,86 @@
 {% load i18n %}
-<ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+<ul class="navbar-nav sidebar accordion" id="accordionSidebar">
 
-    <!-- Sidebar - Brand -->
-    <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{% url 'web:dashboard_view' %}">
-        <!--<div class="sidebar-brand-icon">
-            <i class="fas fa-user-cog"></i>
-        </div>-->
-        <div class="sidebar-brand-text mx-2">{% trans 'Jasmin Panel' %} <sup>{{ VERSION }}</sup></div>
+    <a class="sidebar-brand" href="{% url 'web:dashboard_view' %}">
+        <span class="jp-mark">J</span>
+        <span class="jp-wordmark">
+            Jasmin Panel
+            <small>v{{ VERSION }}</small>
+        </span>
     </a>
 
-    <!-- Divider -->
-    <hr class="sidebar-divider my-0">
+    <li class="nav-section">{% trans "Overview" %}</li>
+    <li class="nav-item dashboard-menu">
+        <a class="nav-link" href="{% url 'web:dashboard_view' %}">
+            <i class="fas fa-fw fa-chart-line"></i><span>{% trans 'Dashboard' %}</span>
+        </a>
+    </li>
+
+    <li class="nav-section">{% trans "Connectors" %}</li>
     <li class="nav-item smppccm-menu">
-        <a class="nav-link" href="{% url 'web:smppccm_view' %}"><i class="fas fa-fw fa-atom"></i><span>{% trans 'SMPPCCM' %}</span></a>
+        <a class="nav-link" href="{% url 'web:smppccm_view' %}">
+            <i class="fas fa-fw fa-plug"></i><span>{% trans 'SMPP Connectors' %}</span>
+        </a>
     </li>
     <li class="nav-item httpccm-menu">
-        <a class="nav-link" href="{% url 'web:httpccm_view' %}"><i class="fas fa-fw fa-atom"></i><span>{% trans 'HTTPCCM' %}</span></a>
+        <a class="nav-link" href="{% url 'web:httpccm_view' %}">
+            <i class="fas fa-fw fa-globe"></i><span>{% trans 'HTTP Connectors' %}</span>
+        </a>
     </li>
 
-    <hr class="sidebar-divider">
-
+    <li class="nav-section">{% trans "Identity" %}</li>
     <li class="nav-item users-menu">
-        <a class="nav-link" href="{% url 'web:users_view' %}"><i class="fas fa-fw fa-user"></i><span>{% trans 'Users' %}</span></a>
+        <a class="nav-link" href="{% url 'web:users_view' %}">
+            <i class="fas fa-fw fa-user"></i><span>{% trans 'Users' %}</span>
+        </a>
     </li>
-
     <li class="nav-item groups-menu">
-        <a class="nav-link" href="{% url 'web:groups_view' %}"><i class="fas fa-fw fa-users"></i><span>{% trans 'Groups' %}</span></a>
+        <a class="nav-link" href="{% url 'web:groups_view' %}">
+            <i class="fas fa-fw fa-users"></i><span>{% trans 'Groups' %}</span>
+        </a>
     </li>
 
-    <hr class="sidebar-divider d-none d-md-block">
-
+    <li class="nav-section">{% trans "Routing" %}</li>
     <li class="nav-item filters-menu">
-        <a class="nav-link" href="{% url 'web:filters_view' %}"><i class="fas fa-fw fa-filter"></i><span>{% trans 'Filters' %}</span></a>
+        <a class="nav-link" href="{% url 'web:filters_view' %}">
+            <i class="fas fa-fw fa-filter"></i><span>{% trans 'Filters' %}</span>
+        </a>
     </li>
-
     <li class="nav-item mtrouter-menu">
-        <a class="nav-link" href="{% url 'web:mtrouter_view' %}"><i class="fas fa-fw fa-cloud-download-alt"></i><span>{% trans 'MT Router' %}</span></a>
+        <a class="nav-link" href="{% url 'web:mtrouter_view' %}">
+            <i class="fas fa-fw fa-arrow-up"></i><span>{% trans 'MT Routes' %}</span>
+        </a>
     </li>
-    
     <li class="nav-item morouter-menu">
-        <a class="nav-link" href="{% url 'web:morouter_view' %}"><i class="fas fa-fw fa-cloud-upload-alt"></i><span>{% trans 'MO Router' %}</span></a>
+        <a class="nav-link" href="{% url 'web:morouter_view' %}">
+            <i class="fas fa-fw fa-arrow-down"></i><span>{% trans 'MO Routes' %}</span>
+        </a>
     </li>
 
-    <hr class="sidebar-divider d-none d-md-block">
-
+    <li class="nav-section">{% trans "Activity" %}</li>
     <li class="nav-item send-sms-menu">
-        <a class="nav-link" href="{% url 'web:send_message_view' %}"><i class="fas fa-fw fa-envelope"></i><span>{% trans 'Send SMS' %}</span></a>
+        <a class="nav-link" href="{% url 'web:send_message_view' %}">
+            <i class="fas fa-fw fa-paper-plane"></i><span>{% trans 'Send SMS' %}</span>
+        </a>
     </li>
-
+    <li class="nav-item campaigns-menu">
+        <a class="nav-link" href="{% url 'campaigns:list' %}">
+            <i class="fas fa-fw fa-bullhorn"></i><span>{% trans 'Campaigns' %}</span>
+        </a>
+    </li>
     {% if SETTINGS.SUBMIT_LOG %}
     <li class="nav-item submit_logs-menu">
-        <a class="nav-link" href="{% url 'web:submit_logs_view' %}"><i class="fas fa-fw fa-clipboard-list"></i><span>{% trans 'Submit Logs' %}</span></a>
+        <a class="nav-link" href="{% url 'web:submit_logs_view' %}">
+            <i class="fas fa-fw fa-list-alt"></i><span>{% trans 'Submit Logs' %}</span>
+        </a>
     </li>
     {% endif %}
+
+    <div class="sidebar-user">
+        <span class="avatar">{{ request.user.username|slice:":1"|upper }}</span>
+        <div class="meta">
+            <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div class="role">{% if request.user.is_superuser %}{% trans "Administrator" %}{% else %}{% trans "Operator" %}{% endif %}</div>
+        </div>
+    </div>
 </ul>

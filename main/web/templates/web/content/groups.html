@@ -1,84 +1,96 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Groups" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "Groups" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Groups" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "Groups" %}</h1>
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h4>
-            <button class="btn btn-success btn-sm float-right" id="add_new_obj"><i class="fas fa-plus"></i> {% trans "Add New" %}</button>
-        </h4>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Groups" %}</h1>
+        <div class="ph-sub">{% trans "Logical containers used to scope routing, billing and access for sets of users." %}</div>
     </div>
-    <div class="card-body">
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New group" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-striped table-sm">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>{% trans "GID Name" %}</th>
-                        <th class="text-center">{% trans "Status" %}</th>
-                        <th class="text-center">{% trans "Option" %}</th>
+                        <th style="width:60px;">#</th>
+                        <th>{% trans "Group ID" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:160px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="4" class="text-center"><i class="fas fa-users text-metal" style="font-size:5rem;"></i><br>{% trans "No Group" %}</td>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-users"></i></div>
+                                <div class="es-title">{% trans "No groups yet" %}</div>
+                                <div class="es-body">{% trans "Create your first group to organize users." %}</div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-labelledby="collection_modalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <form id="add_modal_form" style="display:none" action="{% url 'web:groups_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Add New Group" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "New group" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group row">
-                        <label class="col-sm-2 col-form-label">{% trans "GID" %}</label>
+                        <label class="col-sm-2 col-form-label">{% trans "Group ID" %}</label>
                         <div class="col-sm-10">
-                            <input type="text" name="gid" class="form-control" placeholder="{% trans 'GID Name' %}">
-                            <small class="text-muted">{% trans "Group ID" %}</small>
+                            <input type="text" name="gid" class="form-control" placeholder="{% trans 'e.g. ops-emea' %}">
+                            <small class="text-muted">{% trans "Unique identifier for this group." %}</small>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                    <button type="submit" class="btn btn-primary">{% trans "Add New Group" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Create group" %}</button>
                 </div>
                 <input type="hidden" name="s" value="add">
             </form>
             <form id="service_modal_form" style="display:none" action="{% url 'web:groups_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Service Group" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Group status" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group row">
-                        <label class="col-sm-2 col-form-label">{% trans "GID" %}</label>
+                        <label class="col-sm-2 col-form-label">{% trans "Group ID" %}</label>
                         <div class="col-sm-10">
-                            <input type="text" name="gid" class="form-control" placeholder="{% trans 'GID Name' %}" readonly>
-                            <small class="text-muted">{% trans "Group ID" %}</small>
+                            <input type="text" name="gid" class="form-control" readonly>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-2 col-form-label">{% trans "Status" %}</label>
                         <div class="col-sm-10">
                             <select name="s" class="form-control" required="required">
-                                <option value="enable">{% trans "Enable" %}</option><option value="disable">{% trans "Disable" %}</option>
+                                <option value="enable">{% trans "Enable" %}</option>
+                                <option value="disable">{% trans "Disable" %}</option>
                             </select>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                    <button type="submit" class="btn btn-primary">{% trans "Submit" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
                 </div>
             </form>
         </div>
@@ -86,8 +98,6 @@
 </div>
 {% endblock content %}
 {% block extrajs %}
-<script>
-var main_trans = {};
-</script>
+<script>var main_trans = {};</script>
 <script src="{% static 'web/content/groups.js' %}"></script>
 {% endblock extrajs %}

@@ -51,6 +51,20 @@ urlpatterns = format_suffix_patterns([
         path('<str:order>/', view=views.mtrouter_detail, name='mtrouter_detail'),
         path('', view=views.mtrouter_list, name='mtrouter_list'),
     ])),
+    # Fake DLR Connectors
+    path('fake-dlr-connectors/', include(arg=[
+        path('<str:cid>/start/', view=views.fake_dlr_connector_start, name='fake_dlr_connector_start'),
+        path('<str:cid>/stop/', view=views.fake_dlr_connector_stop, name='fake_dlr_connector_stop'),
+        path('<str:cid>/status/', view=views.fake_dlr_connector_status, name='fake_dlr_connector_status'),
+        path('<str:cid>/', view=views.fake_dlr_connector_detail, name='fake_dlr_connector_detail'),
+        path('', view=views.fake_dlr_connector_list, name='fake_dlr_connector_list'),
+    ])),
+    # Fake DLR Routes
+    path('fake-dlr-routes/', include(arg=[
+        path('statistics/', view=views.fake_dlr_route_statistics, name='fake_dlr_route_statistics'),
+        path('<int:order>/', view=views.fake_dlr_route_detail, name='fake_dlr_route_detail'),
+        path('', view=views.fake_dlr_route_list, name='fake_dlr_route_list'),
+    ])),
     # Health Check
     path('health_check', view=views.health_check, name="health_check")
 ])

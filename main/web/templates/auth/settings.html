@@ -1,8 +1,24 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Settings" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "Settings" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Settings" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "Settings" %}</h1>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Settings" %}</h1>
+        <div class="ph-sub">{% trans "Personalise your panel preferences." %}</div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="es-icon"><i class="fas fa-cog"></i></div>
+            <div class="es-title">{% trans "Settings coming soon" %}</div>
+            <div class="es-body">{% trans "Notification preferences, default timezone and locale will live here." %}</div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 {% block extrajs %}{% endblock extrajs %}

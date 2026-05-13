@@ -9,6 +9,7 @@
 	<meta name="robots" content="all,follow">
     <link rel="icon" type="image/png" href="{% static 'assets/img/favicon.ico' %}">
 	<link rel="stylesheet" type="text/css" href="{% static 'assets/css/base.css' %}">
+	<link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.css' %}?v=3">
 	{% block extracss %}{% endblock extracss %}
 </head>
 <body id="page-top">
@@ -16,7 +17,13 @@
     {% include "web/includes/sidebar.html" %}
     <div id="content-wrapper" class="d-flex flex-column">
         <div id="content">
-            {% include "web/includes/topbar.html" %}
+            <nav class="navbar navbar-expand topbar static-top">
+                <button id="sidebarToggleTop" class="icon-btn d-md-none mr-2" aria-label="Toggle sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="topbar-title">{% block page_title %}{% trans "Dashboard" %}{% endblock page_title %}</div>
+                {% include "web/includes/topbar.html" %}
+            </nav>
             <div class="container-fluid">
 				{% block content %}{% endblock content %}
             </div>

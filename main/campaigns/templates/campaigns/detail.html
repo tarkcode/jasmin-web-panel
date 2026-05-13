@@ -1,0 +1,245 @@
+{% extends "web/base.html" %}
+{% load static i18n humanize %}
+{% block title %}{{ campaign.name }} · {% trans "Campaign" %}{% endblock title %}
+{% block page_title %}{% trans "Campaign" %}{% endblock page_title %}
+{% block extracss %}
+<style>
+.campaign-meta { display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px; font-size: 13px; }
+.campaign-meta dt { color: var(--jp-text-muted); font-weight: 500; }
+.campaign-meta dd { margin: 0; color: var(--jp-text); font-feature-settings: 'tnum'; }
+.progress-lg { height: 12px; }
+.progress-lg .progress-bar { height: 12px; }
+</style>
+{% endblock extracss %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <div class="d-flex" style="gap:12px;align-items:center;flex-wrap:wrap;">
+            <h1 class="ph-title">{{ campaign.name }}</h1>
+            {% if campaign.status == 'running' or campaign.status == 'queued' %}
+                <span class="status-pill submitted" style="background:var(--jp-blue-50);color:var(--jp-blue-700);" id="campaign-status-pill">{{ campaign.get_status_display }}</span>
+            {% elif campaign.status == 'completed' %}
+                <span class="status-pill success" id="campaign-status-pill">{{ campaign.get_status_display }}</span>
+            {% elif campaign.status == 'failed' or campaign.status == 'cancelled' %}
+                <span class="status-pill danger" id="campaign-status-pill">{{ campaign.get_status_display }}</span>
+            {% elif campaign.status == 'paused' %}
+                <span class="status-pill warning" id="campaign-status-pill">{{ campaign.get_status_display }}</span>
+            {% else %}
+                <span class="status-pill muted" id="campaign-status-pill">{{ campaign.get_status_display }}</span>
+            {% endif %}
+        </div>
+        {% if campaign.description %}<div class="ph-sub">{{ campaign.description }}</div>{% endif %}
+    </div>
+    <div class="ph-actions" id="campaign-actions">
+        {% if campaign.status == 'draft' or campaign.status == 'scheduled' %}
+            <button class="btn btn-primary btn-sm" data-action="start"><i class="fas fa-play mr-1"></i> {% trans "Start" %}</button>
+        {% elif campaign.status == 'running' %}
+            <button class="btn btn-secondary btn-sm" data-action="pause"><i class="fas fa-pause mr-1"></i> {% trans "Pause" %}</button>
+            <button class="btn btn-outline-danger btn-sm" data-action="cancel"><i class="fas fa-stop mr-1"></i> {% trans "Cancel" %}</button>
+        {% elif campaign.status == 'paused' %}
+            <button class="btn btn-primary btn-sm" data-action="resume"><i class="fas fa-play mr-1"></i> {% trans "Resume" %}</button>
+            <button class="btn btn-outline-danger btn-sm" data-action="cancel"><i class="fas fa-stop mr-1"></i> {% trans "Cancel" %}</button>
+        {% elif campaign.status == 'queued' %}
+            <button class="btn btn-outline-danger btn-sm" data-action="cancel"><i class="fas fa-stop mr-1"></i> {% trans "Cancel" %}</button>
+        {% endif %}
+        <a href="{% url 'campaigns:recipients_export' campaign.pk %}" class="btn btn-light btn-sm"><i class="fas fa-download mr-1"></i> {% trans "Export" %}</a>
+    </div>
+</div>
+
+{% include "web/includes/message.html" %}
+
+<!-- Progress + counts -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "Progress" %}</h6></div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                    <span class="text-muted">{% trans "Total" %}: <strong style="color:var(--jp-text);" id="kpi-total">{{ campaign.total_recipients|intcomma }}</strong></span>
+                    <span><strong id="kpi-progress">{{ campaign.progress_pct }}%</strong></span>
+                </div>
+                <div class="progress progress-lg mb-3"><div class="progress-bar" id="kpi-bar" style="width: {{ campaign.progress_pct }}%"></div></div>
+
+                <div class="stat-strip" style="grid-template-columns: repeat(4, 1fr);">
+                    <div class="stat-pill submitted">
+                        <div><div class="lab">{% trans "Sent" %}</div><div class="val" id="kpi-sent">{{ campaign.sent_count|intcomma }}</div></div>
+                        <i class="fas fa-paper-plane" style="color:var(--jp-blue-600);"></i>
+                    </div>
+                    <div class="stat-pill delivered">
+                        <div><div class="lab">{% trans "Delivered" %}</div><div class="val" id="kpi-delivered">{{ campaign.delivered_count|intcomma }}</div></div>
+                        <i class="fas fa-check-circle" style="color:var(--jp-success);"></i>
+                    </div>
+                    <div class="stat-pill failed">
+                        <div><div class="lab">{% trans "Failed" %}</div><div class="val" id="kpi-failed">{{ campaign.failed_count|intcomma }}</div></div>
+                        <i class="fas fa-times-circle" style="color:var(--jp-danger);"></i>
+                    </div>
+                    <div class="stat-pill unknown">
+                        <div><div class="lab">{% trans "Pending" %}</div><div class="val" id="kpi-pending">{{ campaign.pending_count|intcomma }}</div></div>
+                        <i class="fas fa-clock text-muted"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "Configuration" %}</h6></div>
+            <div class="card-body">
+                <dl class="campaign-meta">
+                    <dt>{% trans "Sender" %}</dt><dd class="text-mono">{{ campaign.sender_id }}</dd>
+                    <dt>{% trans "Method" %}</dt><dd>{{ campaign.send_method|upper }}</dd>
+                    <dt>{% trans "User" %}</dt><dd class="text-mono">{{ campaign.user_uid|default:"—" }}</dd>
+                    <dt>{% trans "Throttle" %}</dt><dd>{{ campaign.throttle_mps }} mps</dd>
+                    <dt>{% trans "Scheduled" %}</dt><dd>{{ campaign.scheduled_at|default:"—" }}</dd>
+                    <dt>{% trans "Started" %}</dt><dd>{{ campaign.started_at|default:"—" }}</dd>
+                    <dt>{% trans "Finished" %}</dt><dd>{{ campaign.finished_at|default:"—" }}</dd>
+                    <dt>{% trans "Created by" %}</dt><dd>{{ campaign.created_by|default:"—" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message preview -->
+<div class="card mb-4">
+    <div class="card-header"><h6 class="m-0">{% trans "Message template" %}</h6></div>
+    <div class="card-body">
+        <pre style="margin:0;font-family:var(--jp-mono);font-size:13px;background:var(--jp-slate-50);padding:14px;border-radius:var(--jp-radius);white-space:pre-wrap;border:1px solid var(--jp-border);">{{ campaign.message_template }}</pre>
+    </div>
+</div>
+
+<!-- Recipients table -->
+<div class="card mb-4">
+    <div class="card-header">
+        <form method="get" class="d-flex" style="gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" name="rsearch" class="form-control form-control-sm" style="max-width:240px;"
+                   value="{{ rsearch }}" placeholder="{% trans 'Search by phone or msgid…' %}">
+            <select name="rstatus" class="form-control form-control-sm" style="max-width:200px;">
+                <option value="">{% trans "All recipient statuses" %}</option>
+                <option value="pending" {% if rstatus == 'pending' %}selected{% endif %}>{% trans "Pending" %}</option>
+                <option value="sending" {% if rstatus == 'sending' %}selected{% endif %}>{% trans "Sending" %}</option>
+                <option value="sent" {% if rstatus == 'sent' %}selected{% endif %}>{% trans "Sent" %}</option>
+                <option value="delivered" {% if rstatus == 'delivered' %}selected{% endif %}>{% trans "Delivered" %}</option>
+                <option value="failed" {% if rstatus == 'failed' %}selected{% endif %}>{% trans "Failed" %}</option>
+                <option value="undelivered" {% if rstatus == 'undelivered' %}selected{% endif %}>{% trans "Undelivered" %}</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search mr-1"></i>{% trans "Filter" %}</button>
+            <a href="{% url 'campaigns:detail' campaign.pk %}" class="btn btn-secondary btn-sm">{% trans "Reset" %}</a>
+            <span class="text-muted ml-auto" style="font-size:12.5px;">{% trans "Showing" %} {{ recipients.start_index }}–{{ recipients.end_index }} {% trans "of" %} {{ recipients.paginator.count }}</span>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">#</th>
+                        <th>{% trans "Phone" %}</th>
+                        <th class="text-center" style="width:130px;">{% trans "Status" %}</th>
+                        <th>{% trans "Message ID" %}</th>
+                        <th>{% trans "Sent at" %}</th>
+                        <th>{% trans "Delivered at" %}</th>
+                        <th>{% trans "Variables" %}</th>
+                        <th>{% trans "Error" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in recipients %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td class="text-mono">{{ r.msisdn }}</td>
+                        <td class="text-center">
+                            {% if r.status == 'delivered' %}
+                                <span class="status-pill success">{{ r.get_status_display }}</span>
+                            {% elif r.status == 'sent' %}
+                                <span class="status-pill submitted" style="background:var(--jp-blue-50);color:var(--jp-blue-700);">{{ r.get_status_display }}</span>
+                            {% elif r.status == 'failed' or r.status == 'undelivered' %}
+                                <span class="status-pill danger">{{ r.get_status_display }}</span>
+                            {% elif r.status == 'sending' %}
+                                <span class="status-pill warning">{{ r.get_status_display }}</span>
+                            {% else %}
+                                <span class="status-pill muted">{{ r.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-mono" style="font-size:11.5px;">{{ r.msgid|default:"—" }}</td>
+                        <td class="text-mono" style="font-size:12px;">{{ r.sent_at|default:"—" }}</td>
+                        <td class="text-mono" style="font-size:12px;">{{ r.delivered_at|default:"—" }}</td>
+                        <td style="font-family:var(--jp-mono);font-size:11.5px;color:var(--jp-text-muted);">{{ r.variables|default:"—" }}</td>
+                        <td style="font-size:12px;color:var(--jp-danger);">{{ r.error_message|truncatechars:60 }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-inbox"></i></div>
+                                <div class="es-title">{% trans "No recipients match" %}</div>
+                                <div class="es-body">{% trans "Try clearing the filter." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="px-3 py-2">
+            {% include "web/includes/paginate.html" with page_obj=recipients %}
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+{% endblock content %}
+{% block extrajs %}
+<script>
+(function ($) {
+    var pk = {{ campaign.pk }};
+    var manageUrl = "{% url 'campaigns:manage' campaign.pk %}";
+    var jsonUrl   = "{% url 'campaigns:recipients_json' campaign.pk %}";
+    var csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+
+    $('#campaign-actions').on('click', '[data-action]', function (e) {
+        e.preventDefault();
+        var btn = $(this);
+        var action = btn.data('action');
+        if (action === 'cancel' && !confirm("{% trans 'Cancel this campaign? Unsent recipients will be skipped.' %}")) return;
+
+        btn.prop('disabled', true);
+        $.ajax({
+            type: 'POST', url: manageUrl, data: { action: action },
+            headers: { 'X-CSRFToken': csrf },
+            success: function () { window.location.reload(); },
+            error: function (jqXHR) {
+                try {
+                    if (typeof toastr !== 'undefined') toastr.error(JSON.parse(jqXHR.responseText).message || 'Error', { closeButton: true });
+                } catch (e) { alert('Error'); }
+                btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // Live progress polling while running
+    var initialStatus = "{{ campaign.status }}";
+    var liveStatuses = ['queued', 'running', 'paused'];
+    if (liveStatuses.indexOf(initialStatus) >= 0) {
+        var poll = setInterval(function () {
+            $.getJSON(jsonUrl, function (d) {
+                $('#kpi-total').text(d.total.toLocaleString());
+                $('#kpi-sent').text(d.sent.toLocaleString());
+                $('#kpi-delivered').text(d.delivered.toLocaleString());
+                $('#kpi-failed').text(d.failed.toLocaleString());
+                $('#kpi-pending').text(d.pending.toLocaleString());
+                $('#kpi-progress').text(d.progress + '%');
+                $('#kpi-bar').css('width', d.progress + '%');
+                if (d.status !== initialStatus) {
+                    // status changed → reload to refresh the action toolbar
+                    clearInterval(poll);
+                    window.location.reload();
+                }
+            });
+        }, 4000);
+    }
+})(jQuery);
+</script>
+{% endblock extrajs %}

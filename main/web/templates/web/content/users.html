@@ -1,37 +1,48 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Users" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "Users" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Users" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "Users" %}</h1>
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h4>
-            <button class="btn btn-success btn-sm float-right" id="add_new_obj"><i class="fas fa-plus"></i> {% trans "Add New" %}</button>
-        </h4>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Users" %}</h1>
+        <div class="ph-sub">{% trans "Jasmin user accounts — credentials, billing quota, throughput limits and per-user filters." %}</div>
     </div>
-    <div class="card-body">
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New user" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered table-sm">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th rowspan="2">#</th>
+                        <th rowspan="2" style="width:60px;">#</th>
                         <th rowspan="2">{% trans "UID" %}</th>
-                        <th rowspan="2">{% trans "GID" %}</th>
+                        <th rowspan="2">{% trans "Group" %}</th>
                         <th rowspan="2">{% trans "Username" %}</th>
-                        <th rowspan="2" class="text-center">{% trans "Status" %}</th>
-                        <th colspan="2">{% trans "MT Messaging Credentials" %}</th>
-                        <th rowspan="2" class="text-center">{% trans "Option" %}</th>
+                        <th rowspan="2" class="text-center" style="width:120px;">{% trans "Status" %}</th>
+                        <th colspan="2" class="text-center" style="border-bottom:1px solid var(--jp-border);">{% trans "MT credentials" %}</th>
+                        <th rowspan="2" class="text-center" style="width:160px;">{% trans "Actions" %}</th>
                     </tr>
                     <tr>
                         <th>{% trans "Balance" %}</th>
-                        <th>{% trans "SMS Count" %}</th>
+                        <th>{% trans "SMS count" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="8" class="text-center"><i class="fas fa-user text-metal" style="font-size:5rem;"></i><br>{% trans "No User" %}</td>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-user"></i></div>
+                                <div class="es-title">{% trans "No users yet" %}</div>
+                                <div class="es-body">{% trans "Create a user to allow API access for sending and receiving SMS." %}</div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>

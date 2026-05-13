@@ -1,104 +1,110 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "MT Router" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "MT Routes" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "MT Routes" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "MT Router" %}</h1>
-<p><small class="muted-text">{% trans "MT is referred to Mobile Terminated, a SMS-MT is an SMS sent to mobile" %}</small></p>
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h4>
-            <button class="btn btn-success btn-sm float-right" id="add_new_obj"><i class="fas fa-plus"></i> {% trans "Add New" %}</button>
-        </h4>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "MT Routes" %}</h1>
+        <div class="ph-sub">{% trans "Mobile-Terminated routing — selects which connector and rate to apply when sending an SMS to a handset." %}</div>
     </div>
-    <div class="card-body">
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New MT route" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-striped table-sm">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th style="width:60px;">#</th>
                         <th>{% trans "Type" %}</th>
-                        <th>{% trans "Order" %}</th>
-                        <th>{% trans "Rate" %}</th>
-                        <th>{% trans "SMPP / HTTP Connectors" %}</th>
+                        <th style="width:80px;">{% trans "Order" %}</th>
+                        <th style="width:90px;">{% trans "Rate" %}</th>
+                        <th>{% trans "Connectors" %}</th>
                         <th>{% trans "Filters" %}</th>
-                        <th class="text-center">{% trans "Option" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="7" class="text-center"><i class="fas fa-cloud-download-alt text-metal" style="font-size:5rem;"></i><br>{% trans "No MT Router" %}</td>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-arrow-up"></i></div>
+                                <div class="es-title">{% trans "No MT routes" %}</div>
+                                <div class="es-body">{% trans "MT routes decide which SMSC and rate apply to outbound traffic." %}</div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-labelledby="collection_modalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <form id="add_modal_form" style="display:none" action="{% url 'web:mtrouter_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Add New MT Router" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "New MT route" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <small>- <strong>DefaultRoute</strong> a route without a filter, this one can only set with the lowest order to be a default/fallback route</small><br>
-                        <small>- <strong>StaticMTRoute</strong> a basic route with Filters and one Connector</small><br>
-                        <small>- <strong>RandomRoundrobinMTRoute</strong> a route with Filters and many Connectors, will return a random Connector if its Filters are matching, can be used as a load balancer route</small><br>
-                        <small>- <strong>FailoverMTRoute</strong> a route with Filters and many Connectors, will return an available (connected) Connector if its Filters are matched</small>
+                        <strong>{% trans "Route types" %}</strong><br>
+                        <small><strong>DefaultRoute</strong> — fallback route without filters; assign the lowest order so it catches anything unmatched.</small><br>
+                        <small><strong>StaticMTRoute</strong> — basic route with filters and a single connector.</small><br>
+                        <small><strong>RandomRoundrobinMTRoute</strong> — load-balanced random connector pick when filters match.</small><br>
+                        <small><strong>FailoverMTRoute</strong> — picks the first available connector when filters match.</small>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-2 col-form-label">{% trans "Type" %}</label>
                         <div class="col-sm-10">
                             <select name="type" class="form-control select">
                                 {% for mt_router_type in mt_router_types %}
-                                    <option value="{{ mt_router_type.0 }}">{{ mt_router_type.1 }}</option>
+                                <option value="{{ mt_router_type.0 }}">{{ mt_router_type.1 }}</option>
                                 {% endfor %}
                             </select>
-                            <small class="text-muted">{% trans "One of the supported MT Routes: DefaultRoute, StaticMTRoute, RandomRoundrobinMTRoute and FailoverMTRoute" %}</small>
+                            <small class="text-muted">{% trans "DefaultRoute, StaticMTRoute, RandomRoundrobinMTRoute or FailoverMTRoute." %}</small>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-2 col-form-label">{% trans "Order" %}</label>
                         <div class="col-sm-10">
-                            <input type="number" name="order" class="form-control" placeholder="{% trans 'Order' %}" required>
-                            <small class="text-muted">{% trans "MT Route priority order, order must be unique and starts from 0" %}</small>
+                            <input type="number" name="order" class="form-control" placeholder="0" required>
+                            <small class="text-muted">{% trans "Priority order — must be unique, starts at 0." %}</small>
                         </div>
                     </div>
                     <div class="form-group row">
                         <label class="col-sm-2 col-form-label">{% trans "Rate" %}</label>
                         <div class="col-sm-10">
-                            <input type="number" name="rate" class="form-control" placeholder="{% trans 'Rate' %}">
-                            <small class="text-muted">{% trans "The route rate, can be zero" %}</small>
+                            <input type="number" step="0.0001" name="rate" class="form-control" placeholder="0.0">
+                            <small class="text-muted">{% trans "Per-message rate applied when this route is taken (zero is allowed)." %}</small>
                         </div>
                     </div>
                     <div class="form-group row">
-                        <label class="col-sm-2 col-form-label">{% trans "SMPP Connectors" %}</label>
+                        <label class="col-sm-2 col-form-label">{% trans "SMPP connectors" %}</label>
                         <div class="col-sm-10">
                             <select name="smppconnectors" class="form-control" multiple></select>
-                            <small class="text-muted">{% trans "Only SMPP Connector allowed" %}</small>
+                            <small class="text-muted">{% trans "Only SMPP connectors are valid for MT routes." %}</small>
                         </div>
                     </div>
-                    <!-- <div class="form-group row">
-                        <label class="col-sm-2 col-form-label">{% trans "HTTP Connectors" %}</label>
-                        <div class="col-sm-10">
-                            <select name="httpconnectors" class="form-control" multiple></select>
-                        </div>
-                    </div> -->
                     <div class="form-group row">
                         <label class="col-sm-2 col-form-label">{% trans "Filters" %}</label>
                         <div class="col-sm-10">
                             <select name="filters" class="form-control" multiple></select>
-                            <small class="text-muted">{% trans "Always required except <b>DefaultRoute</b> option" %}</small>
+                            <small class="text-muted">{% trans "Required for every route type except DefaultRoute." %}</small>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                    <button type="submit" class="btn btn-primary">{% trans "Add New MT Router" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Create route" %}</button>
                 </div>
                 <input type="hidden" name="s" value="add">
             </form>

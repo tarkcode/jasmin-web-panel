@@ -1,36 +1,31 @@
 {% load i18n %}
-<nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 static-top shadow">
-
-    <!-- Sidebar Toggle (Topbar) -->
-    <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
-        <i class="fa fa-bars"></i>
-    </button>
-
-    <!-- Topbar Navbar -->
-    <ul class="navbar-nav ml-auto">
-        <div class="topbar-divider d-none d-sm-block"></div>
-        <!-- Nav Item - User Information -->
-        <li class="nav-item dropdown no-arrow">
-            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ request.user.get_full_name }}</span>
-                <img class="img-profile rounded-circle" src="{{ request.user.img }}">
+<ul class="navbar-nav ml-auto align-items-center">
+    <li class="nav-item d-none d-md-block">
+        <a class="icon-btn" href="https://github.com/101t/jasmin-web-panel" target="_blank" rel="noopener" title="{% trans 'Documentation' %}">
+            <i class="fas fa-book"></i>
+        </a>
+    </li>
+    <li class="nav-item dropdown ml-2">
+        <a class="user-chip dropdown-toggle" href="#" id="userDropdown" role="button"
+           data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <span class="avatar">{{ request.user.username|slice:":1"|upper }}</span>
+            <span class="d-none d-md-inline">{{ request.user.get_full_name|default:request.user.username }}</span>
+            <i class="fas fa-chevron-down" style="font-size:10px;color:var(--jp-text-muted);"></i>
+        </a>
+        <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+            <a class="dropdown-item" href="{% url 'users:profile_view' %}">
+                <i class="fas fa-user"></i> {% trans "Profile" %}
             </a>
-            <!-- Dropdown - User Information -->
-            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                <a class="dropdown-item" href="{% url 'users:profile_view' %}">
-                    <i class="fas fa-cogs fa-sm fa-fw mr-2 text-gray-400"></i>
-                    {% trans "Profile" %}
-                </a>
-                <a class="dropdown-item" href="{% url 'users:activity_log_view' %}">
-                    <i class="fas fa-list fa-sm fa-fw mr-2 text-gray-400"></i>
-                    {% trans "Activity Log" %}
-                </a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="{% url 'users:logout_view' %}">
-                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                    {% trans 'Logout' %}
-                </a>
-            </div>
-        </li>
-    </ul>
-</nav>
+            <a class="dropdown-item" href="{% url 'users:activity_log_view' %}">
+                <i class="fas fa-history"></i> {% trans "Activity log" %}
+            </a>
+            <a class="dropdown-item" href="{% url 'users:settings_view' %}">
+                <i class="fas fa-cog"></i> {% trans "Settings" %}
+            </a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="{% url 'users:logout_view' %}">
+                <i class="fas fa-sign-out-alt"></i> {% trans 'Sign out' %}
+            </a>
+        </div>
+    </li>
+</ul>

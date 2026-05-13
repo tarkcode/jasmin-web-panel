@@ -9,33 +9,38 @@
 	<meta name="robots" content="all,follow">
 	<link rel="icon" type="image/png" href="{% static 'assets/img/favicon.ico' %}">
 	<link rel="stylesheet" type="text/css" href="{% static 'assets/css/base.css' %}">
-	<style>
-	.auth-box {text-align: center;vertical-align:middle;}
-	.auth-child {padding-top:12%;padding-bottom:12%;}
-	</style>
+	<link rel="stylesheet" type="text/css" href="{% static 'assets/css/theme.css' %}?v=3">
 	{% block extracss %}{% endblock extracss %}
 </head>
-<body class="bg-gradient-primary">
-	<div class="container">
-		<div class="row justify-content-center">
-			<div class="col-xl-10 col-lg-12 col-md-9">
-				<div class="card o-hidden border-0 shadow-lg my-5">
-					<div class="card-body p-0">
-						<div class="row">
-							<div class="col-lg-6 d-none d-lg-block auth-box">
-								<div class="auth-child">
-									<img src="/static/assets/img/jasmin.png" style="width:50%;" alt="Login">
-									<p class="text-muted">v{{ VERSION }}</p>
-								</div>
-							</div>
-							<div class="col-lg-6">
-								{% block content %}{% endblock content %}
-							</div>
-						</div>
-					</div>
+<body class="auth-page">
+	<div class="auth-shell">
+		<aside class="auth-brand">
+			<div class="auth-mark">
+				<div class="jp-mark">J</div>
+				<div>
+					<div class="jp-name">Jasmin Panel</div>
+					<div class="jp-sub">SMS Gateway · v{{ VERSION }}</div>
 				</div>
 			</div>
-		</div>
+
+			<div class="pitch">
+				<h1>{% trans "Operate your SMS gateway with confidence." %}</h1>
+				<p>{% trans "A unified control plane for SMPP and HTTP connectors, routing, throughput, and delivery analytics." %}</p>
+				<ul class="features">
+					<li><i class="fas fa-check-circle"></i> {% trans "Real-time SMPP/HTTP connector health" %}</li>
+					<li><i class="fas fa-check-circle"></i> {% trans "MO/MT routing with filter pipelines" %}</li>
+					<li><i class="fas fa-check-circle"></i> {% trans "Submit log search, export and audit trail" %}</li>
+				</ul>
+			</div>
+
+			<div class="meta">© {% now 'Y' %} Jasmin Panel · Built for telecom operators.</div>
+		</aside>
+
+		<main class="auth-panel">
+			<div class="auth-card">
+				{% block content %}{% endblock content %}
+			</div>
+		</main>
 	</div>
 <script src="{% static 'assets/vendor/jquery/jquery.min.js' %}"></script>
 <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>

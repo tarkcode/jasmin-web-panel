@@ -4,3 +4,4 @@ from .currency import *
 from .emailserver import *
 from .submit_log import *
 from .tokenizer import *
+from .fake_dlr import *

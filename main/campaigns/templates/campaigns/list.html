@@ -1,0 +1,137 @@
+{% extends "web/base.html" %}
+{% load static i18n humanize %}
+{% block title %}{% trans "Campaigns" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Campaigns" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Campaigns" %}</h1>
+        <div class="ph-sub">{% trans "Bulk SMS jobs — upload recipients, compose with placeholders, throttle and track delivery." %}</div>
+    </div>
+    <div class="ph-actions">
+        <a href="{% url 'campaigns:create' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i> {% trans "New campaign" %}</a>
+    </div>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-pill total">
+        <div><div class="lab">{% trans "Total" %}</div><div class="val">{{ summary.total|default:0 }}</div></div>
+        <i class="fas fa-bullhorn text-muted"></i>
+    </div>
+    <div class="stat-pill submitted">
+        <div><div class="lab">{% trans "Running" %}</div><div class="val">{{ summary.running|default:0 }}</div></div>
+        <i class="fas fa-play" style="color:var(--jp-blue-600);"></i>
+    </div>
+    <div class="stat-pill unknown">
+        <div><div class="lab">{% trans "Scheduled" %}</div><div class="val">{{ summary.scheduled|default:0 }}</div></div>
+        <i class="fas fa-clock text-muted"></i>
+    </div>
+    <div class="stat-pill delivered">
+        <div><div class="lab">{% trans "Completed" %}</div><div class="val">{{ summary.completed|default:0 }}</div></div>
+        <i class="fas fa-check-circle" style="color:var(--jp-success);"></i>
+    </div>
+    <div class="stat-pill failed">
+        <div><div class="lab">{% trans "Failed" %}</div><div class="val">{{ summary.failed|default:0 }}</div></div>
+        <i class="fas fa-exclamation-circle" style="color:var(--jp-danger);"></i>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <form method="get" class="d-flex" style="gap:8px;align-items:center;">
+            <input type="text" name="search" class="form-control form-control-sm" style="max-width:280px;"
+                   value="{{ search }}" placeholder="{% trans 'Search by name or sender ID…' %}">
+            <select name="status" class="form-control form-control-sm" style="max-width:200px;">
+                <option value="">{% trans "All statuses" %}</option>
+                {% for code, label in campaigns.object_list.0.STATUS_CHOICES %}{% endfor %}
+                <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>{% trans "Draft" %}</option>
+                <option value="scheduled" {% if status_filter == 'scheduled' %}selected{% endif %}>{% trans "Scheduled" %}</option>
+                <option value="queued" {% if status_filter == 'queued' %}selected{% endif %}>{% trans "Queued" %}</option>
+                <option value="running" {% if status_filter == 'running' %}selected{% endif %}>{% trans "Running" %}</option>
+                <option value="paused" {% if status_filter == 'paused' %}selected{% endif %}>{% trans "Paused" %}</option>
+                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>{% trans "Completed" %}</option>
+                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>{% trans "Cancelled" %}</option>
+                <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>{% trans "Failed" %}</option>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search mr-1"></i>{% trans "Filter" %}</button>
+            <a href="{% url 'campaigns:list' %}" class="btn btn-secondary btn-sm">{% trans "Reset" %}</a>
+        </form>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">#</th>
+                        <th>{% trans "Name" %}</th>
+                        <th>{% trans "Sender" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Status" %}</th>
+                        <th>{% trans "Progress" %}</th>
+                        <th class="text-center" style="width:110px;">{% trans "Recipients" %}</th>
+                        <th class="text-center" style="width:90px;">{% trans "Method" %}</th>
+                        <th>{% trans "Created" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for c in campaigns %}
+                    <tr>
+                        <td>{{ c.id }}</td>
+                        <td>
+                            <a href="{% url 'campaigns:detail' c.pk %}" style="font-weight:600;color:var(--jp-text);">{{ c.name }}</a>
+                            {% if c.description %}<div class="text-muted" style="font-size:12px;margin-top:2px;">{{ c.description|truncatechars:80 }}</div>{% endif %}
+                        </td>
+                        <td class="text-mono">{{ c.sender_id }}</td>
+                        <td class="text-center">
+                            {% if c.status == 'running' or c.status == 'queued' %}
+                                <span class="status-pill submitted" style="background:var(--jp-blue-50);color:var(--jp-blue-700);">{{ c.get_status_display }}</span>
+                            {% elif c.status == 'completed' or c.status == 'delivered' %}
+                                <span class="status-pill success">{{ c.get_status_display }}</span>
+                            {% elif c.status == 'failed' or c.status == 'cancelled' %}
+                                <span class="status-pill danger">{{ c.get_status_display }}</span>
+                            {% elif c.status == 'paused' %}
+                                <span class="status-pill warning">{{ c.get_status_display }}</span>
+                            {% else %}
+                                <span class="status-pill muted">{{ c.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div class="progress" style="flex:1;min-width:80px;max-width:180px;">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ c.progress_pct }}%"></div>
+                                </div>
+                                <span class="text-muted" style="font-size:12px;font-feature-settings:'tnum';">{{ c.progress_pct }}%</span>
+                            </div>
+                        </td>
+                        <td class="text-center text-mono">{{ c.total_recipients|intcomma }}</td>
+                        <td class="text-center"><span class="status-pill muted">{{ c.send_method|upper }}</span></td>
+                        <td title="{{ c.created }}">{{ c.created|naturaltime }}</td>
+                        <td class="text-center">
+                            <a href="{% url 'campaigns:detail' c.pk %}" class="btn btn-light btn-sm" title="{% trans 'Open' %}"><i class="fas fa-arrow-right"></i></a>
+                            <a href="{% url 'campaigns:recipients_export' c.pk %}" class="btn btn-light btn-sm" title="{% trans 'Export CSV' %}"><i class="fas fa-download"></i></a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="es-title">{% trans "No campaigns yet" %}</div>
+                                <div class="es-body">{% trans "Create your first bulk SMS campaign — upload a CSV, write a templated message, and send." %}</div>
+                                <div style="margin-top:16px;">
+                                    <a href="{% url 'campaigns:create' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus mr-1"></i>{% trans "New campaign" %}</a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="px-3 py-2">
+            {% include "web/includes/paginate.html" with page_obj=campaigns %}
+        </div>
+    </div>
+</div>
+{% endblock content %}

@@ -1,51 +1,93 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Send SMS" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "Send SMS" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Send SMS" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "Send SMS" %}</h1>
-<div class="card shadow mb-4 col-6">
-    <div class="card-body">
-        {% include "web/includes/message.html" %}
-        <form action="{% url 'web:send_message_view' %}" method="post">{% csrf_token %}
-            <div class="form-group">
-                <label for="send_type">{{ form.send_type.label }}</label>
-                <select class="form-control select-control" name="send_type" id="send_type">
-                    <option value="smpp" {% if form.send_type.value == 'smpp' %}selected{% endif %}>SMPP</option>
-                    <option value="http" {% if form.send_type.value == 'http' %}selected{% endif %}>HTTP</option>
-                </select>
-                <small class="text-muted label-danger">{{ form.send_type.help_text }}</small>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Send SMS" %}</h1>
+        <div class="ph-sub">{% trans "Send an outbound message through SMPP or HTTP for testing or one-off operational use." %}</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card mb-4">
+            <div class="card-header"><h6 class="m-0">{% trans "Message" %}</h6></div>
+            <div class="card-body">
+                {% include "web/includes/message.html" %}
+                <form action="{% url 'web:send_message_view' %}" method="post">{% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="send_type">{{ form.send_type.label }}</label>
+                                <select class="form-control" name="send_type" id="send_type">
+                                    <option value="smpp" {% if form.send_type.value == 'smpp' %}selected{% endif %}>SMPP</option>
+                                    <option value="http" {% if form.send_type.value == 'http' %}selected{% endif %}>HTTP</option>
+                                </select>
+                                <small class="text-muted">{{ form.send_type.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="user_uid">{{ form.user_uid.label }}</label>
+                                <select class="form-control" name="user_uid" id="user_uid">
+                                    <option value="">{% trans "Default (environment credentials)" %}</option>
+                                </select>
+                                <small class="text-muted">{{ form.user_uid.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="src_addr">{{ form.src_addr.label }}</label>
+                                <input class="form-control" type="text" id="src_addr" name="src_addr" value="{{ form.src_addr.value|default:'' }}" placeholder="{% trans 'Sender ID or short code' %}">
+                                <small class="text-muted">{{ form.src_addr.help_text }}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="dst_addr">{{ form.dst_addr.label }}</label>
+                                <input class="form-control" type="text" id="dst_addr" name="dst_addr" value="{{ form.dst_addr.value|default:'' }}" placeholder="{% trans '+countrycode mobile number' %}">
+                                <small class="text-muted">{{ form.dst_addr.help_text }}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="text">{{ form.text.label }}</label>
+                        <textarea class="form-control" id="text" name="text" rows="5" placeholder="{% trans 'Message body' %}">{{ form.text.value|default:'' }}</textarea>
+                        <small class="text-muted">{{ form.text.help_text }}</small>
+                    </div>
+
+                    <div class="d-flex justify-content-end" style="gap:8px;">
+                        <a href="{% url 'web:dashboard_view' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
+                        <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane mr-1"></i>{% trans "Send message" %}</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label for="user_uid">{{ form.user_uid.label }}</label>
-                <select class="form-control" name="user_uid" id="user_uid">
-                    <option value="">{% trans "Default (Environment Credentials)" %}</option>
-                </select>
-                <small class="text-muted">{{ form.user_uid.help_text }}</small>
+        </div>
+    </div>
+
+    <div class="col-lg-4 col-xl-5">
+        <div class="card mb-4">
+            <div class="card-header"><h6 class="m-0">{% trans "Tips" %}</h6></div>
+            <div class="card-body">
+                <ul style="padding-left:18px;font-size:13px;color:var(--jp-text-muted);line-height:1.65;margin:0;">
+                    <li>{% trans "SMPP is best for production traffic — it gives delivery receipts and binding state." %}</li>
+                    <li>{% trans "HTTP is useful for quick tests or for users without an SMPP client library." %}</li>
+                    <li>{% trans "Selecting a user routes the message under that user's credentials, throughput limits and quotas." %}</li>
+                    <li>{% trans "Use E.164 format (+CC...) for destination addresses." %}</li>
+                </ul>
             </div>
-            <div class="form-group">
-                <label for="src_addr">{{ form.src_addr.label }}</label>
-                <input class="form-control" type="text" id="src_addr" name="src_addr" value="{{ form.src_addr.value }}">
-                <small class="text-muted">{{ form.src_addr.help_text }}</small>
-            </div>
-            <div class="form-group">
-                <label for="dst_addr">{{ form.dst_addr.label }}</label>
-                <input class="form-control" type="text" id="dst_addr" name="dst_addr" value="{{ form.dst_addr.value }}">
-                <small class="text-muted">{{ form.dst_addr.help_text }}</small>
-            </div>
-            <div class="form-group">
-                <label for="text">{{ form.text.label }}</label>
-                <textarea class="form-control" id="text" name="text" rows="4">{{ form.text.value }}</textarea>
-                <small class="text-muted">{{ form.text.help_text }}</small>
-            </div>
-            <button class="btn btn-primary" type="submit"><i class="fas fa-paper-plane"></i> Send SMS</button>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock content %}
 {% block extrajs %}
-<script>
-var main_trans = {};
-</script>
+<script>var main_trans = {};</script>
 <script src="{% static 'web/content/send_message.js' %}"></script>
 {% endblock extrajs %}

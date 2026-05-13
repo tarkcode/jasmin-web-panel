@@ -1,26 +1,35 @@
 {% extends "auth/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Sign In" %} - Jasmin Web Panel{% endblock title %}
+{% block title %}{% trans "Sign In" %} · Jasmin Panel{% endblock title %}
 {% block extracss %}{% endblock extracss %}
 {% block content %}
-<div class="p-5">
-    <div class="text-center">
-        <h1 class="h4 text-gray-900 mb-4">{% trans 'Welcome Back!' %}</h1>
+<h2>{% trans "Welcome back" %}</h2>
+<p class="lead">{% trans "Sign in to your Jasmin Panel account to manage your SMS gateway." %}</p>
+
+{% include "web/includes/message.html" %}
+
+<form action="{% url 'users:signin_view' %}{% if next %}?next={{next}}{% endif %}" method="POST" autocomplete="on">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    <div class="form-group">
+        <label for="signin-username">{% trans "Username or email" %}</label>
+        <input id="signin-username" type="text" name="username" class="form-control form-control-lg"
+               placeholder="{% trans 'admin' %}" autocomplete="username" autofocus>
     </div>
-    {% include "web/includes/message.html" %}
-    <form class="user" action="{% url 'users:signin_view' %}{% if next %}?next={{next}}{% endif %}" method="POST">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
-        <div class="form-group">
-            <input type="text" name="username" class="form-control form-control-lg" placeholder="{% trans 'Username' %}">
+
+    <div class="form-group">
+        <div class="d-flex justify-content-between align-items-center">
+            <label for="signin-password" class="m-0">{% trans "Password" %}</label>
+            <a class="small" href="{% url 'users:reset_view' %}">{% trans "Forgot password?" %}</a>
         </div>
-        <div class="form-group">
-            <input type="password" name="password" class="form-control form-control-lg" placeholder="{% trans 'Password' %}">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">{% trans 'Login' %}</button>
-    </form>
-    <hr>
-    <div class="text-center"><a class="small" href="{% url 'users:reset_view' %}">{% trans 'Forgot Password?' %}</a></div>
-</div>
+        <input id="signin-password" type="password" name="password" class="form-control form-control-lg"
+               placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block mt-2">{% trans "Sign in" %}</button>
+</form>
+
+<div class="form-help">{% trans "Need access? Contact your administrator." %}</div>
 {% endblock content %}
 {% block extrajs %}{% endblock extrajs %}

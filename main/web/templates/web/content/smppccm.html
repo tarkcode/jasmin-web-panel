@@ -1,34 +1,45 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "SMPP Client Connector Manager" %}{% endblock title %}
-{% block extracss %}{% endblock extracss %}
+{% block title %}{% trans "SMPP Connectors" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "SMPP Connectors" %}{% endblock page_title %}
 {% block content %}
-<h1 class="h3 mb-2 text-gray-800">{% trans "SMPP Client Connector Manager" %}</h1>
-<div class="card shadow mb-4">
-    <div class="card-header py-3">
-        <h4>
-            <button class="btn btn-success btn-sm float-right" id="add_new_obj"><i class="fas fa-plus"></i> {% trans "Add New" %}</button>
-        </h4>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "SMPP Connectors" %}</h1>
+        <div class="ph-sub">{% trans "Outbound SMPP client bindings to SMSCs. Manage credentials, throughput, retry behaviour and bind state." %}</div>
     </div>
-    <div class="card-body">
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New connector" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-striped table-sm">
+            <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>{% trans "CID Name" %}</th>
+                        <th style="width:60px;">#</th>
+                        <th>{% trans "Connector ID" %}</th>
                         <th>{% trans "Host" %}</th>
-                        <th>{% trans "Port" %}</th>
+                        <th style="width:80px;">{% trans "Port" %}</th>
                         <th>{% trans "Username" %}</th>
                         <th>{% trans "Password" %}</th>
-                        <th class="text-center">{% trans "Status" %}</th>
-                        <th class="text-center">{% trans "Option" %}</th>
+                        <th class="text-center" style="width:140px;">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:160px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="8" class="text-center"><i class="fas fa-atom text-metal" style="font-size:5rem;"></i><br>{% trans "No SMPPCCM" %}</td>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-plug"></i></div>
+                                <div class="es-title">{% trans "No SMPP connectors" %}</div>
+                                <div class="es-body">{% trans "Bind to an SMSC by adding your first SMPP client connector." %}</div>
+                            </div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -40,7 +51,7 @@
         <div class="modal-content">
             <form id="add_modal_form" style="display:none" action="{% url 'web:smppccm_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Add New SMPP Client Connector" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "New SMPP connector" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
@@ -87,13 +98,13 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
-                    <button type="submit" class="btn btn-primary">{% trans "Add New SMPPCCM" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Create connector" %}</button>
                 </div>
                 <input type="hidden" name="s" value="add">
             </form>
             <form id="edit_modal_form" style="display:none" action="{% url 'web:smppccm_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Edit SMPP Client Connector" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "SMPP connector" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
@@ -383,7 +394,7 @@
             </form>
             <form id="service_modal_form" style="display:none" action="{% url 'web:smppccm_view_manage' %}" method="post">{% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="collection_modalLabel">{% trans "Edit SMPP Client Connector" %}</h5>
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "SMPP connector" %}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">

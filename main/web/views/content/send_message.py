@@ -47,14 +47,14 @@ def send_message_view(request):
 
             if send_type == 'smpp':
                 if username and password:
-                    res_status, res_message = send_smpp(src_addr, dst_addr, text, system_id=username, password=password)
+                    res_status, res_message, _ = send_smpp(src_addr, dst_addr, text, system_id=username, password=password)
                 else:
-                    res_status, res_message = send_smpp(src_addr, dst_addr, text)
+                    res_status, res_message, _ = send_smpp(src_addr, dst_addr, text)
             elif send_type == 'http':
                 if username and password:
-                    res_status, res_message = send_http(src_addr, dst_addr, text, username=username, password=password)
+                    res_status, res_message, _ = send_http(src_addr, dst_addr, text, username=username, password=password)
                 else:
-                    res_status, res_message = send_http(src_addr, dst_addr, text)
+                    res_status, res_message, _ = send_http(src_addr, dst_addr, text)
             else:
                 res_status, res_message = 400, f"Unknown send type: {send_type}"
 

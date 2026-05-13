@@ -27,9 +27,16 @@ services:
       - ./main/web/views/content/smppccm.py:/app/main/web/views/content/smppccm.py:ro
       - ./main/web/views/content/users.py:/app/main/web/views/content/users.py:ro
       - ./main/web/views/content/submit_logs.py:/app/main/web/views/content/submit_logs.py:ro
-      - ./main/web/templates/web/content/submit_logs.html:/app/main/web/templates/web/content/submit_logs.html:ro
-      - ./main/web/templates/web/includes/paginate.html:/app/main/web/templates/web/includes/paginate.html:ro
       - ./main/web/helpers.py:/app/main/web/helpers.py:ro
+      # Live-reload mounts for design pass — entire templates/static trees so we
+      # iterate without rebuilding the image. collectstatic runs on container start.
+      - ./main/web/templates:/app/main/web/templates:ro
+      - ./main/web/static:/app/main/web/static:ro
+      - ./main/static:/app/main/static:ro
+      - ./main/web/views:/app/main/web/views:ro
+      - ./main/campaigns:/app/main/campaigns
+      - ./config/urls.py:/app/config/urls.py:ro
+      - ./config/settings/com.py:/app/config/settings/com.py:ro
     depends_on:
       - redis
       - db
@@ -47,6 +54,15 @@ services:
       DEBUG: 0
       DJANGO_SETTINGS_MODULE: config.settings.pro
       CELERY_LOG_LEVEL: info
+    volumes:
+      - ./main/campaigns:/app/main/campaigns
+      - ./main/web/helpers.py:/app/main/web/helpers.py:ro
+      - ./main/core/middleware.py:/app/main/core/middleware.py:ro
+      - ./main/core/utils/common.py:/app/main/core/utils/common.py:ro
+      - ./main/core/smpp/conn.py:/app/main/core/smpp/conn.py:ro
+      - ./main/core/smpp/smppccm.py:/app/main/core/smpp/smppccm.py:ro
+      - ./config/urls.py:/app/config/urls.py:ro
+      - ./config/settings/com.py:/app/config/settings/com.py:ro
     healthcheck:
       disable: true
     depends_on:

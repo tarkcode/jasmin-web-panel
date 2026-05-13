@@ -35,6 +35,16 @@ from .mtrouter import (
     mtrouter_detail,
     mtrouter_flush,
 )
+from .fake_dlr import (
+    fake_dlr_connector_list,
+    fake_dlr_connector_detail,
+    fake_dlr_connector_start,
+    fake_dlr_connector_stop,
+    fake_dlr_connector_status,
+    fake_dlr_route_list,
+    fake_dlr_route_detail,
+    fake_dlr_route_statistics,
+)
 from .health_check import health_check
 
 
@@ -62,5 +72,13 @@ __all__ = [
     'mtrouter_list',
     'mtrouter_detail',
     'mtrouter_flush',
+    'fake_dlr_connector_list',
+    'fake_dlr_connector_detail',
+    'fake_dlr_connector_start',
+    'fake_dlr_connector_stop',
+    'fake_dlr_connector_status',
+    'fake_dlr_route_list',
+    'fake_dlr_route_detail',
+    'fake_dlr_route_statistics',
     'health_check',
 ]

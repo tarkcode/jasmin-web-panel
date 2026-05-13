@@ -1,30 +1,39 @@
 {% extends "auth/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "Reset Password" %} - Jasmin Web Panel{% endblock title %}
+{% block title %}{% trans "Reset password" %} · Jasmin Panel{% endblock title %}
 {% block content %}
-<div class="p-5">
-    <div class="text-center">
-        <h1 class="h4 text-gray-900 mb-4">{% trans 'Reset your password' %}</h1>
-    </div>
-    {% include "web/includes/message.html" %}
+<h2>{% trans "Reset your password" %}</h2>
+<p class="lead">
     {% if show_confirm_form %}
-    <form class="user" action="{% url 'users:reset_password_view' request.resolver_match.kwargs.uidb64 request.resolver_match.kwargs.token %}" method="POST">{% csrf_token %}
-        <div class="form-group">
-            <input type="password" name="password" class="form-control form-control-lg" placeholder="{% trans 'New password' %}">
-        </div>
-        <div class="form-group">
-            <input type="password" name="password2" class="form-control form-control-lg" placeholder="{% trans 'New password confirm' %}">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">{% trans 'Send reset password' %}</button>
-    </form>
+        {% trans "Choose a new password for your account." %}
     {% else %}
-    <form class="user" action="{% url 'users:reset_view' %}{% if next %}?next={{next}}{% endif %}" method="POST">{% csrf_token %}
-        <div class="form-group">
-            <input type="text" name="username" class="form-control form-control-lg" placeholder="{% trans 'Username' %}">
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">{% trans 'Reset password' %}</button>
-    </form>
+        {% trans "Enter your username and we'll send you a reset link." %}
     {% endif %}
-    <hr>
-    <div class="text-center">{% trans "Have an account?" %} <a class="small" href="{% url 'users:signin_view' %}">{% trans 'Sign in' %}</a></div>
+</p>
+
+{% include "web/includes/message.html" %}
+
+{% if show_confirm_form %}
+<form action="{% url 'users:reset_password_view' request.resolver_match.kwargs.uidb64 request.resolver_match.kwargs.token %}" method="POST" autocomplete="off">{% csrf_token %}
+    <div class="form-group">
+        <label for="reset-pw1">{% trans "New password" %}</label>
+        <input id="reset-pw1" type="password" name="password" class="form-control form-control-lg" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+        <label for="reset-pw2">{% trans "Confirm new password" %}</label>
+        <input id="reset-pw2" type="password" name="password2" class="form-control form-control-lg" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg btn-block mt-2">{% trans "Set new password" %}</button>
+</form>
+{% else %}
+<form action="{% url 'users:reset_view' %}{% if next %}?next={{next}}{% endif %}" method="POST">{% csrf_token %}
+    <div class="form-group">
+        <label for="reset-username">{% trans "Username or email" %}</label>
+        <input id="reset-username" type="text" name="username" class="form-control form-control-lg" placeholder="{% trans 'admin' %}" autocomplete="username" autofocus>
+    </div>
+    <button type="submit" class="btn btn-primary btn-lg btn-block mt-2">{% trans "Send reset link" %}</button>
+</form>
+{% endif %}
+
+<div class="form-help">{% trans "Remembered it?" %} <a href="{% url 'users:signin_view' %}">{% trans "Sign in" %}</a></div>
 {% endblock content %}
