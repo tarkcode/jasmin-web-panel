@@ -41,7 +41,9 @@ services:
       - ./main/core/fake_dlr.py:/app/main/core/fake_dlr.py:ro
       - ./main/core/fake_dlr_router.py:/app/main/core/fake_dlr_router.py:ro
       - ./main/core/models/fake_dlr.py:/app/main/core/models/fake_dlr.py:ro
+      - ./main/core/models/__init__.py:/app/main/core/models/__init__.py:ro
       - ./main/core/admin/fake_dlr.py:/app/main/core/admin/fake_dlr.py:ro
+      - ./main/core/admin/__init__.py:/app/main/core/admin/__init__.py:ro
       - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
       - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
       - ./main/core/management/commands/fake_dlr.py:/app/main/core/management/commands/fake_dlr.py:ro
