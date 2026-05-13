@@ -3,7 +3,7 @@ Database models for Fake DLR connectors
 """
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from main.core.models.base import TimeStampedModel
+from main.core.models.timestamped import TimeStampedModel
 
 
 class FakeDLRConnectorModel(TimeStampedModel):
