@@ -43,8 +43,9 @@ services:
       - ./main/core/models/fake_dlr.py:/app/main/core/models/fake_dlr.py:ro
       - ./main/core/admin/fake_dlr.py:/app/main/core/admin/fake_dlr.py:ro
       - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
+      - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
       - ./main/core/management/commands/fake_dlr.py:/app/main/core/management/commands/fake_dlr.py:ro
-      - ./main/core/migrations/0005_fake_dlr_models.py:/app/main/core/migrations/0005_fake_dlr_models.py:ro
+      - ./main/core/migrations:/app/main/core/migrations:ro
     depends_on:
       - redis
       - db
