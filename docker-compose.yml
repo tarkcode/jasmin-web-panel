@@ -37,6 +37,14 @@ services:
       - ./main/campaigns:/app/main/campaigns
       - ./config/urls.py:/app/config/urls.py:ro
       - ./config/settings/com.py:/app/config/settings/com.py:ro
+      # Fake DLR implementation files
+      - ./main/core/fake_dlr.py:/app/main/core/fake_dlr.py:ro
+      - ./main/core/fake_dlr_router.py:/app/main/core/fake_dlr_router.py:ro
+      - ./main/core/models/fake_dlr.py:/app/main/core/models/fake_dlr.py:ro
+      - ./main/core/admin/fake_dlr.py:/app/main/core/admin/fake_dlr.py:ro
+      - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
+      - ./main/core/management/commands/fake_dlr.py:/app/main/core/management/commands/fake_dlr.py:ro
+      - ./main/core/migrations/0002_fake_dlr_models.py:/app/main/core/migrations/0002_fake_dlr_models.py:ro
     depends_on:
       - redis
       - db
@@ -63,6 +71,10 @@ services:
       - ./main/core/smpp/smppccm.py:/app/main/core/smpp/smppccm.py:ro
       - ./config/urls.py:/app/config/urls.py:ro
       - ./config/settings/com.py:/app/config/settings/com.py:ro
+      # Fake DLR implementation files for Celery
+      - ./main/core/fake_dlr.py:/app/main/core/fake_dlr.py:ro
+      - ./main/core/fake_dlr_router.py:/app/main/core/fake_dlr_router.py:ro
+      - ./main/core/models/fake_dlr.py:/app/main/core/models/fake_dlr.py:ro
     healthcheck:
       disable: true
     depends_on:
