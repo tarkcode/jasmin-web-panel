@@ -20,6 +20,7 @@ import os
 import sys
 import time
 import pickle
+import random
 import binascii
 import logging
 from datetime import datetime, timedelta
@@ -76,6 +77,11 @@ logger = logging.getLogger("sms_logger")
 qmap = {}
 QMAP_TTL_SECONDS = int(os.getenv("QMAP_TTL_SECONDS", str(60*60*4)))  # drop items older than 4h
 
+# ---------- Fake DLR config cache ----------
+_fake_dlr_configs = {}   # {connector_cid: {enabled, success_rate, min_delay, max_delay, instant_response}}
+FAKE_DLR_RELOAD_INTERVAL = int(os.getenv("FAKE_DLR_RELOAD_INTERVAL", "60"))  # seconds
+FAKE_DLR_TABLE = "tbl_fake_dlr_connectors"
+
 # Pools (initialized at startup)
 _pg_pool = None
 _mysql_pool = None
@@ -83,6 +89,159 @@ _mysql_pool = None
 # backoff/connect config
 CONNECT_BACKOFF_BASE = 1
 CONNECT_BACKOFF_MAX = 60
+
+
+# ---------- Fake DLR helpers ----------
+def load_fake_dlr_configs():
+    """Load FakeDLRConnectorModel configs directly from DB into memory cache."""
+    global _fake_dlr_configs
+    conn = None
+    try:
+        if DB_TYPE_MYSQL:
+            conn = get_mysql_conn()
+            cursor = conn.cursor(dictionary=True)
+        else:
+            conn = get_postgres_conn()
+            cursor = conn.cursor()
+
+        cursor.execute(
+            f"SELECT cid, enabled, success_rate, min_delay, max_delay, instant_response "
+            f"FROM {FAKE_DLR_TABLE}"
+        )
+
+        new_configs = {}
+        if DB_TYPE_MYSQL:
+            rows = cursor.fetchall()
+            for row in rows:
+                new_configs[row["cid"]] = {
+                    "enabled": bool(row["enabled"]),
+                    "success_rate": row["success_rate"],
+                    "min_delay": row["min_delay"],
+                    "max_delay": row["max_delay"],
+                    "instant_response": bool(row["instant_response"]),
+                }
+        else:
+            cols = [desc[0] for desc in cursor.description]
+            for row in cursor.fetchall():
+                r = dict(zip(cols, row))
+                new_configs[r["cid"]] = {
+                    "enabled": bool(r["enabled"]),
+                    "success_rate": r["success_rate"],
+                    "min_delay": r["min_delay"],
+                    "max_delay": r["max_delay"],
+                    "instant_response": bool(r["instant_response"]),
+                }
+
+        _fake_dlr_configs = new_configs
+        if new_configs:
+            logger.info("Fake DLR configs loaded: %s", list(new_configs.keys()))
+        else:
+            logger.debug("No fake DLR configs found")
+    except Exception as e:
+        logger.warning("Failed to load fake DLR configs: %s", e)
+    finally:
+        if conn:
+            try:
+                if DB_TYPE_MYSQL:
+                    conn.close()
+                else:
+                    put_postgres_conn(conn)
+            except Exception:
+                pass
+
+
+def periodic_fake_dlr_reload():
+    """Periodically reload fake DLR configs from DB."""
+    try:
+        load_fake_dlr_configs()
+    except Exception as e:
+        logger.debug("Periodic fake DLR reload failed: %s", e)
+    reactor.callLater(FAKE_DLR_RELOAD_INTERVAL, periodic_fake_dlr_reload)
+
+
+def schedule_fake_dlr(message_id, routed_cid):
+    """
+    Check if fake DLR is configured for this connector.
+    If so, schedule a delayed status update via reactor.callLater.
+    """
+    cfg = _fake_dlr_configs.get(routed_cid)
+    if not cfg or not cfg["enabled"]:
+        return
+
+    # Decide status based on success_rate
+    if random.randint(1, 100) <= cfg["success_rate"]:
+        fake_status = "DELIVRD"
+    else:
+        fake_status = "UNDELIV"
+
+    # Calculate delay
+    if cfg["instant_response"]:
+        delay = 0
+    else:
+        mn = max(0, cfg["min_delay"])
+        mx = max(mn, cfg["max_delay"])
+        delay = random.randint(mn, mx)
+
+    logger.info("Fake DLR scheduled: msgid=%s cid=%s status=%s delay=%ds",
+                message_id, routed_cid, fake_status, delay)
+
+    # Schedule the update using Twisted's non-blocking timer
+    reactor.callLater(delay, _execute_fake_dlr_update, message_id, fake_status, routed_cid)
+
+
+def _execute_fake_dlr_update(message_id, status, routed_cid):
+    """Execute the fake DLR DB update (runs in reactor thread via callLater)."""
+    conn = None
+    try:
+        if DB_TYPE_MYSQL:
+            conn = get_mysql_conn()
+            cursor = conn.cursor()
+        else:
+            conn = get_postgres_conn()
+            cursor = conn.cursor()
+
+        update_sql = f"UPDATE {DB_TABLE} SET status = %s, status_at = %s WHERE msgid = %s;"
+        now = datetime.utcnow()
+        cursor.execute(update_sql, (status, now, message_id))
+        conn.commit()
+
+        if cursor.rowcount > 0:
+            logger.info("Fake DLR applied: msgid=%s status=%s cid=%s", message_id, status, routed_cid)
+            # Update stats in the fake DLR config table
+            _update_fake_dlr_stats(cursor, conn, routed_cid, status == "DELIVRD")
+        else:
+            logger.warning("Fake DLR: no row found for msgid=%s", message_id)
+    except Exception as e:
+        logger.exception("Fake DLR update failed for msgid=%s: %s", message_id, e)
+        try:
+            if conn:
+                conn.rollback()
+        except Exception:
+            pass
+    finally:
+        if conn:
+            try:
+                if DB_TYPE_MYSQL:
+                    conn.close()
+                else:
+                    put_postgres_conn(conn)
+            except Exception:
+                pass
+
+
+def _update_fake_dlr_stats(cursor, conn, cid, delivered):
+    """Atomically increment stats on the fake DLR connector."""
+    try:
+        if delivered:
+            sql = (f"UPDATE {FAKE_DLR_TABLE} SET total_messages = total_messages + 1, "
+                   f"delivered_count = delivered_count + 1 WHERE cid = %s;")
+        else:
+            sql = (f"UPDATE {FAKE_DLR_TABLE} SET total_messages = total_messages + 1, "
+                   f"failed_count = failed_count + 1 WHERE cid = %s;")
+        cursor.execute(sql, (cid,))
+        conn.commit()
+    except Exception as e:
+        logger.debug("Failed to update fake DLR stats for cid=%s: %s", cid, e)
 
 # ---------- DB pool helpers ----------
 def init_postgres_pool():
@@ -490,6 +649,13 @@ def gotConnection(conn, username, password):
                         cursor.execute(update_sql, (status_str, created_at, message_id))
                     db_conn.commit()
 
+                # Schedule fake DLR if configured for this connector
+                if status_str == "ESME_ROK" and routed_cid:
+                    try:
+                        schedule_fake_dlr(message_id, routed_cid)
+                    except Exception as e:
+                        logger.debug("Fake DLR scheduling failed: %s", e)
+
                 yield chan.basic_ack(delivery_tag=msg.delivery_tag)
 
             # Process DLRs
@@ -625,6 +791,13 @@ if __name__ == "__main__":
 
     # start periodic qmap cleanup timer
     reactor.callLater(300, periodic_qmap_cleanup)
+
+    # Load fake DLR configs and start periodic reload
+    try:
+        load_fake_dlr_configs()
+    except Exception as e:
+        logger.warning("Initial fake DLR config load failed (will retry): %s", e)
+    reactor.callLater(FAKE_DLR_RELOAD_INTERVAL, periodic_fake_dlr_reload)
 
     # Start initial connect attempt (connect_attempt defined above)
     try:

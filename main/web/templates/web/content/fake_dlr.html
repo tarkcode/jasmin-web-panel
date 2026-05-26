@@ -1,0 +1,206 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Fake DLR" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Fake DLR" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Fake DLR" %}</h1>
+        <div class="ph-sub">{% trans "Configure automatic delivery reports per SMPP connector." %}</div>
+    </div>
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New Config" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">#</th>
+                        <th>{% trans "Connector ID" %}</th>
+                        <th>{% trans "Name" %}</th>
+                        <th class="text-center" style="width:100px;">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Success Rate" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Delay" %}</th>
+                        <th class="text-center" style="width:180px;">{% trans "Stats" %}</th>
+                        <th class="text-center" style="width:180px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="collectionlist"></tbody>
+                <tbody class="isEmpty" style="display:none;">
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-flask"></i></div>
+                                <div class="es-title">{% trans "No fake DLR configs" %}</div>
+                                <div class="es-body">{% trans "Create a config to start generating automatic delivery reports for an SMPP connector." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-labelledby="collection_modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <form id="add_modal_form" style="display:none" action="{% url 'web:fake_dlr_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="collection_modalLabel">{% trans "New Config" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Connector ID" %}</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="cid" class="form-control" placeholder="{% trans 'e.g. smpp-01' %}" required>
+                            <small class="text-muted">{% trans "SMPP connector identifier to attach this config to." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Name" %}</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="name" class="form-control" placeholder="{% trans 'e.g. Test DLR' %}">
+                            <small class="text-muted">{% trans "Optional display name. Defaults to Connector ID." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Enabled" %}</label>
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox mt-2">
+                                <input type="checkbox" class="custom-control-input" id="add_enabled" name="enabled" value="true" checked>
+                                <label class="custom-control-label" for="add_enabled">{% trans "Active" %}</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Success Rate" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="success_rate" class="form-control" min="0" max="100" value="100">
+                                <div class="input-group-append"><span class="input-group-text">%</span></div>
+                            </div>
+                            <small class="text-muted">{% trans "Percentage of messages that receive a DELIVRD status (0–100)." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Min Delay" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="min_delay" class="form-control" min="0" value="3">
+                                <div class="input-group-append"><span class="input-group-text">{% trans "seconds" %}</span></div>
+                            </div>
+                            <small class="text-muted">{% trans "Minimum delay before sending the DLR callback." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Max Delay" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="max_delay" class="form-control" min="0" value="10">
+                                <div class="input-group-append"><span class="input-group-text">{% trans "seconds" %}</span></div>
+                            </div>
+                            <small class="text-muted">{% trans "Maximum delay before sending the DLR callback." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Instant Response" %}</label>
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox mt-2">
+                                <input type="checkbox" class="custom-control-input" id="add_instant_response" name="instant_response" value="true">
+                                <label class="custom-control-label" for="add_instant_response">{% trans "Send DLR immediately (ignore delay)" %}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Create config" %}</button>
+                </div>
+                <input type="hidden" name="s" value="add">
+            </form>
+            <form id="edit_modal_form" style="display:none" action="{% url 'web:fake_dlr_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Edit Config" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Connector ID" %}</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="cid" class="form-control" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Name" %}</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="name" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Enabled" %}</label>
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox mt-2">
+                                <input type="checkbox" class="custom-control-input" id="edit_enabled" name="enabled" value="true">
+                                <label class="custom-control-label" for="edit_enabled">{% trans "Active" %}</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Success Rate" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="success_rate" class="form-control" min="0" max="100">
+                                <div class="input-group-append"><span class="input-group-text">%</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Min Delay" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="min_delay" class="form-control" min="0">
+                                <div class="input-group-append"><span class="input-group-text">{% trans "seconds" %}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Max Delay" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" name="max_delay" class="form-control" min="0">
+                                <div class="input-group-append"><span class="input-group-text">{% trans "seconds" %}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Instant Response" %}</label>
+                        <div class="col-sm-9">
+                            <div class="custom-control custom-checkbox mt-2">
+                                <input type="checkbox" class="custom-control-input" id="edit_instant_response" name="instant_response" value="true">
+                                <label class="custom-control-label" for="edit_instant_response">{% trans "Send DLR immediately (ignore delay)" %}</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+                </div>
+                <input type="hidden" name="s" value="edit">
+                <input type="hidden" name="id" value="">
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block extrajs %}
+<script>var main_trans = {};</script>
+<script src="{% static 'web/content/fake_dlr.js' %}"></script>
+{% endblock extrajs %}

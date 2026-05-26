@@ -34,6 +34,7 @@ services:
       - ./main/web/static:/app/main/web/static:ro
       - ./main/static:/app/main/static:ro
       - ./main/web/views:/app/main/web/views:ro
+      - ./main/web/urls.py:/app/main/web/urls.py:ro
       - ./main/campaigns:/app/main/campaigns
       - ./config/urls.py:/app/config/urls.py:ro
       - ./config/settings/com.py:/app/config/settings/com.py:ro

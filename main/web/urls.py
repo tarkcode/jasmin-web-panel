@@ -5,6 +5,8 @@ from main.web import views
 app_name = 'web'
 
 urlpatterns = [
+    path('fake_dlr/manage/', views.fake_dlr_view_manage, name='fake_dlr_view_manage'),
+    path('fake_dlr/', views.fake_dlr_view, name='fake_dlr_view'),
     path('filters/manage/', views.filters_view_manage, name='filters_view_manage'),
     path('filters/', views.filters_view, name='filters_view'),
     path('groups/manage/', views.groups_view_manage, name='groups_view_manage'),
