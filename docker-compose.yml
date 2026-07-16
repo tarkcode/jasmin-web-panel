@@ -22,6 +22,8 @@ services:
       - web_logs:/app/logs
       - ./main/core/smpp/conn.py:/app/main/core/smpp/conn.py:ro
       - ./main/core/smpp/smppccm.py:/app/main/core/smpp/smppccm.py:ro
+      - ./main/core/smpp/mtrouter.py:/app/main/core/smpp/mtrouter.py:ro
+      - ./main/core/tools.py:/app/main/core/tools.py:ro
       - ./main/core/middleware.py:/app/main/core/middleware.py:ro
       - ./main/core/utils/common.py:/app/main/core/utils/common.py:ro
       - ./main/web/views/content/smppccm.py:/app/main/web/views/content/smppccm.py:ro

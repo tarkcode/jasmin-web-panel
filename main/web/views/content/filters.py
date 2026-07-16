@@ -23,13 +23,22 @@ def filters_view_manage(request):
         response = filters.list()
     elif s == "add":
         filter_type = request.POST.get("type")
+        fid = (request.POST.get("fid") or "").strip()
+        if not fid:
+            return JsonResponse({"message": str(_("Filter ID is required.")), "status": 400}, status=400)
+        if not filter_type:
+            return JsonResponse({"message": str(_("Filter type is required.")), "status": 400}, status=400)
+
         data_filter = {
-            "fid": request.POST.get("fid"),
+            "fid": fid,
             "type": filter_type,
         }
 
         if filter_type != "transparentfilter":
-            data_filter['parameter'] = request.POST.get("parameter")
+            parameter = (request.POST.get("parameter") or "").strip()
+            if not parameter:
+                return JsonResponse({"message": str(_("This filter type requires a parameter.")), "status": 400}, status=400)
+            data_filter['parameter'] = parameter
 
         response = filters.create(data=data_filter)
         response["message"] = str(_("Filter added successfully!"))

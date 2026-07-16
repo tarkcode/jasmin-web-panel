@@ -83,6 +83,11 @@ class MTRouter(TelnetConnection):
         """Add a new MTRouter"""
         route_type = data.get('type') or "DefaultRoute"
         order = data.get('order') or "1"
+        # Jasmin always stores the default route at order 0. Honouring a
+        # user-supplied order (e.g. 1) here means the post-create lookup fails
+        # with "No MTRouter with order: N", so pin it to 0 for DefaultRoute.
+        if route_type == "DefaultRoute":
+            order = "0"
         filters = data.get('filters') or ""
         rate = data.get('rate') or "0.0"
         """ MT Router only support SMPP connectors, HTTP not allowed """

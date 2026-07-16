@@ -10,6 +10,13 @@ STANDARD_PROMPT = settings.STANDARD_PROMPT
 INTERACTIVE_PROMPT = settings.INTERACTIVE_PROMPT
 
 
+def _match_text(match_group):
+    "Coerce a pexpect match group (bytes in the default spawn mode, or str) to stripped text."
+    if isinstance(match_group, bytes):
+        match_group = match_group.decode(errors="replace")
+    return match_group.strip()
+
+
 def set_ikeys(telnet, keys2vals):
     "set multiple keys for interactive command"
     for key, val in keys2vals.items():
@@ -20,7 +27,7 @@ def set_ikeys(telnet, keys2vals):
             r'(.*) can not be modified.*' + INTERACTIVE_PROMPT,
             r'(.*)' + INTERACTIVE_PROMPT
         ])
-        result = telnet.match.group(1).strip()
+        result = _match_text(telnet.match.group(1))
         if matched_index == 0:
             raise UnknownError(result)
         if matched_index == 1:
@@ -28,11 +35,24 @@ def set_ikeys(telnet, keys2vals):
     telnet.sendline('ok')
     ok_index = telnet.expect([
         r'ok(.* syntax is invalid).*' + INTERACTIVE_PROMPT,
+        # Jasmin refuses to save when required options are missing/empty, e.g.
+        # "You must set these options before saving: fid, type, gid". Without this
+        # branch we sit at the interactive prompt until the telnet timeout fires.
+        r'.*(You must set these options before saving[^\r\n]*).*' + INTERACTIVE_PROMPT,
         r'.*' + STANDARD_PROMPT,
     ])
     if ok_index == 0:
         # remove whitespace and return error
-        raise JasminSyntaxError(" ".join(telnet.match.group(1).split()))
+        raise JasminSyntaxError(" ".join(_match_text(telnet.match.group(1)).split()))
+    if ok_index == 1:
+        message = " ".join(_match_text(telnet.match.group(1)).split())
+        # Leave the interactive session cleanly so the telnet connection is reusable.
+        telnet.sendline('ko')
+        try:
+            telnet.expect(r'.*' + STANDARD_PROMPT)
+        except Exception:
+            pass
+        raise JasminSyntaxError(message)
 
 
 def split_cols(lines):
