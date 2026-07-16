@@ -161,9 +161,10 @@ services:
       - ./jasmin_config:/etc/jasmin
       - ./logs:/var/log/jasmin
     ports:
-      - "${JASMIN_SMS_PORT:-2775}:2775"
-      - "${JASMIN_DASHBOARD_PORT:-8990}:8990"
-      - "${JASMIN_HTTP_API_PORT:-1401}:1401"
+      # Bound to localhost only — reach via SSH tunnel, never internet-exposed.
+      - "127.0.0.1:${JASMIN_SMS_PORT:-2775}:2775"
+      - "127.0.0.1:${JASMIN_DASHBOARD_PORT:-8990}:8990"
+      - "127.0.0.1:${JASMIN_HTTP_API_PORT:-1401}:1401"
     depends_on:
       - redis
       - rabbitmq
