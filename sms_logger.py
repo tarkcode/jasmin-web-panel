@@ -57,6 +57,12 @@ DB_PASS = os.getenv("DB_PASS", "jasmin")
 AMQP_BROKER_HOST = os.getenv("AMQP_BROKER_HOST", "rabbitmq")
 AMQP_BROKER_PORT = int(os.getenv("AMQP_BROKER_PORT", "5672"))
 AMQP_SPEC_FILE = os.getenv("AMQP_SPEC_FILE", "/etc/jasmin/resource/amqp0-9-1.xml")
+# Seconds between AMQP heartbeats. 0 disables them (the old behaviour), which
+# lets a half-open TCP connection go undetected forever — the consumer then
+# hangs on queue.get() and silently stops logging. A non-zero value makes the
+# broker/client exchange heartbeats so a dead peer triggers connectionLost and
+# the reconnect loop fires.
+AMQP_HEARTBEAT = int(os.getenv("AMQP_HEARTBEAT", "60"))
 
 # consumer tuning
 PREFETCH_COUNT = int(os.getenv("SMS_LOG_PREFETCH", "50"))
@@ -726,7 +732,8 @@ def connect_attempt(backoff=CONNECT_BACKOFF_BASE):
                       KeepAliveAMQClient,
                       delegate=TwistedDelegate(),
                       vhost="/",
-                      spec=spec).connectTCP(AMQP_BROKER_HOST, AMQP_BROKER_PORT)
+                      spec=spec,
+                      heartbeat=AMQP_HEARTBEAT).connectTCP(AMQP_BROKER_HOST, AMQP_BROKER_PORT)
     d.addCallback(gotConnection, username, password)
 
     def _on_err(err):
