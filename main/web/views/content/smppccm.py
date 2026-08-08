@@ -36,13 +36,22 @@ def smppccm_view_manage(request):
                            f" ('{username}' is {len(username)} chars)",
                 "status": 400
             }, status=400)
+        password = request.POST.get("password", "")
+        # SMPP passwords are a COctetString capped at 9 octets (8 usable chars);
+        # anything longer silently breaks the bind. Never echo the value back.
+        if len(password) > 8:
+            return JsonResponse({
+                "message": str(_("Password is too long. SMPP passwords are limited to 8 characters.")) +
+                           f" (got {len(password)})",
+                "status": 400
+            }, status=400)
         try:
             smppccm.create(data=dict(
                 cid=cid,
                 host=request.POST.get("host"),
                 port=request.POST.get("port"),
                 username=username,
-                password=request.POST.get("password"),
+                password=password,
             ))
         except (JasminSyntaxError, JasminError, UnknownError) as e:
             detail = getattr(e, 'detail', str(e)) or str(e)
@@ -52,6 +61,14 @@ def smppccm_view_manage(request):
             }, status=400)
         response["message"] = str(_("SMPPCCM added successfully!"))
     elif s == "edit":
+        # Guard the SMPP 8-char password limit before touching the connector.
+        password = request.POST.get("password", "")
+        if len(password) > 8:
+            return JsonResponse({
+                "message": str(_("Password is too long. SMPP passwords are limited to 8 characters.")) +
+                           f" (got {len(password)})",
+                "status": 400
+            }, status=400)
         try:
             smppccm.partial_update(data=dict(
                 cid=request.POST.get("cid"),

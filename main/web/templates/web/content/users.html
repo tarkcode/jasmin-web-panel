@@ -82,13 +82,14 @@
                         <label class="col-sm-2 col-form-label">{% trans "Password" %}</label>
                         <div class="col-sm-10">
                             <div class="input-group">
-                                <input type="password" name="password" class="form-control password-input" placeholder="{% trans 'Password' %}">
+                                <input type="password" name="password" maxlength="8" class="form-control password-input" placeholder="{% trans 'Password' %}">
                                 <div class="input-group-append">
                                     <button class="btn btn-outline-secondary toggle-password" type="button" title="{% trans 'Show/Hide Password' %}">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted">{% trans "Maximum 8 characters (SMPP protocol limit)." %}</small>
                         </div>
                     </div>
                 </div>
@@ -128,13 +129,14 @@
                         <label class="col-sm-2 col-form-label">{% trans "Password" %}</label>
                         <div class="col-sm-10">
                             <div class="input-group">
-                                <input type="password" name="password" class="form-control password-input" placeholder="{% trans 'Password' %}">
+                                <input type="password" name="password" maxlength="8" class="form-control password-input" placeholder="{% trans 'Password' %}">
                                 <div class="input-group-append">
                                     <button class="btn btn-outline-secondary toggle-password" type="button" title="{% trans 'Show/Hide Password' %}">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted">{% trans "Maximum 8 characters (SMPP protocol limit)." %}</small>
                         </div>
                     </div>
                     <h3>{% trans "Quota" %}</h3>

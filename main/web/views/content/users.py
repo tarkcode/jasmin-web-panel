@@ -27,6 +27,15 @@ def users_view_manage(request):
             username = request.POST.get("username")
             password = request.POST.get("password")
 
+            # A Jasmin user's password is sent as an SMPP COctetString in the
+            # bind PDU (max 9 octets = 8 usable chars); >8 breaks the bind.
+            if len(password or "") > 8:
+                return JsonResponse({
+                    "message": str(_("Password is too long. SMPP passwords are limited to 8 characters.")) +
+                               f" (got {len(password)})",
+                    "status": 400
+                }, status=400)
+
             users.create(data=dict(
                 uid=uid,
                 gid=gid,
@@ -95,6 +104,13 @@ def users_view_manage(request):
                     "True" if request.POST.get("smpps_send", True) else "False"],
             ]
             password = request.POST.get("password", "")
+            # Blank password = "leave unchanged"; only validate/apply when set.
+            if len(password) > 8:
+                return JsonResponse({
+                    "message": str(_("Password is too long. SMPP passwords are limited to 8 characters.")) +
+                               f" (got {len(password)})",
+                    "status": 400
+                }, status=400)
             if len(password) > 0:
                 data.append(["password", password])
 
