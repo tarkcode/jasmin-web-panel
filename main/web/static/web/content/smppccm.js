@@ -18,6 +18,24 @@
                 var output = $.map(datalist, function(val, i){
                     var html = "";
                     var maskedPassword = val.password ? '•'.repeat(Math.min(val.password.length, 8)) : '';
+                    // Status dot reflects the ACTUAL SMPP bind, not just whether the
+                    // service is running. Jasmin's "session" is BOUND_TRX/BOUND_TX/BOUND_RX
+                    // only when the far-end SMSC has accepted the bind. A connector can be
+                    // "started" yet sit at session=NONE/UNBOUND (far end down or rejecting),
+                    // so keying green off status alone shows a false "connected".
+                    //   green  = started AND bound      -> both sides established
+                    //   amber  = started, not yet bound -> trying / rejected by peer
+                    //   grey   = stopped
+                    var isBound = /^BOUND/.test(val.session || "");
+                    var isStarted = val.status === "started";
+                    var dotClass, dotTitle;
+                    if (isStarted && isBound) {
+                        dotClass = "text-success"; dotTitle = "Bound (" + val.session + ")";
+                    } else if (isStarted) {
+                        dotClass = "text-warning"; dotTitle = "Started but not bound (" + (val.session || "NONE") + ")";
+                    } else {
+                        dotClass = "text-default"; dotTitle = "Stopped";
+                    }
                     html += `<tr>
                         <td>${i+1}</td>
                         <td>${val.cid}</td>
@@ -25,7 +43,7 @@
                         <td>${val.port}</td>
                         <td>${val.username}</td>
                         <td><span class="password-masked" title="{% trans 'Password is masked for security' %}">${maskedPassword}</span></td>
-                        <td class="text-center">${val.status === "started"?'<i class="fas fa-circle fa-lg text-success"><i/>':'<i class="fas fa-circle fa-lg text-default"><i/>'}</td>
+                        <td class="text-center"><i class="fas fa-circle fa-lg ${dotClass}" title="${dotTitle}"></i></td>
                         <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
                             <div class="btn-group btn-group-sm">
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('service', '${i+1}');"><i class="fas fa-play-circle"></i></a>
