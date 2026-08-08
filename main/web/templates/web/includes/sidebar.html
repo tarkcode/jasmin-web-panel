@@ -81,6 +81,13 @@
     </li>
     {% endif %}
 
+    <li class="nav-section">{% trans "Help" %}</li>
+    <li class="nav-item docs-menu">
+        <a class="nav-link" href="{% url 'web:docs_view' %}">
+            <i class="fas fa-fw fa-book"></i><span>{% trans 'Docs' %}</span>
+        </a>
+    </li>
+
     <div class="sidebar-user">
         <span class="avatar">{{ request.user.username|slice:":1"|upper }}</span>
         <div class="meta">

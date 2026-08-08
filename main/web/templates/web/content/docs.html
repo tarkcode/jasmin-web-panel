@@ -1,0 +1,413 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Docs" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Documentation" %}{% endblock page_title %}
+
+{% block extracss %}
+<style>
+    .docs-wrap { display: grid; grid-template-columns: 240px 1fr; gap: 28px; align-items: start; }
+    @media (max-width: 992px) { .docs-wrap { grid-template-columns: 1fr; } .docs-toc { position: static !important; } }
+    .docs-toc { position: sticky; top: 16px; }
+    .docs-toc .card-body { padding: 12px; }
+    .docs-toc .toc-title { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #94a3b8; padding: 6px 10px; }
+    .docs-toc a { display: block; padding: 7px 10px; border-radius: 8px; color: #475569; font-size: .875rem; text-decoration: none; line-height: 1.2; }
+    .docs-toc a:hover { background: #f1f5f9; color: #1e293b; }
+    .docs-toc a.active { background: #eef2ff; color: #4f46e5; font-weight: 600; }
+
+    .docs-section { scroll-margin-top: 20px; }
+    .docs-section .card-body { padding: 22px 24px; }
+    .docs-section h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 4px; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+    .docs-section h2 .sec-ico { width: 34px; height: 34px; border-radius: 9px; background: #eef2ff; color: #4f46e5; display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; flex: 0 0 auto; }
+    .docs-section .sec-sub { color: #64748b; font-size: .9rem; margin: 0 0 14px 44px; }
+    .docs-section p { color: #334155; font-size: .92rem; line-height: 1.6; }
+    .docs-section ul, .docs-section ol { color: #334155; font-size: .92rem; line-height: 1.65; padding-left: 20px; }
+    .docs-section li { margin-bottom: 6px; }
+    .docs-section code { background: #f1f5f9; color: #db2777; padding: 1px 6px; border-radius: 5px; font-size: .85em; }
+    .docs-section strong { color: #1e293b; }
+
+    .docs-lead { background: linear-gradient(135deg,#4f46e5,#7c3aed); color: #fff; border: none; }
+    .docs-lead .card-body { padding: 24px 26px; }
+    .docs-lead h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 6px; }
+    .docs-lead p { color: rgba(255,255,255,.9); margin: 0; font-size: .95rem; line-height: 1.6; }
+
+    .callout { border-radius: 10px; padding: 12px 16px; margin: 14px 0; font-size: .88rem; line-height: 1.55; display: flex; gap: 11px; }
+    .callout .cico { flex: 0 0 auto; margin-top: 1px; }
+    .callout-warn { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
+    .callout-warn .cico { color: #ea580c; }
+    .callout-tip { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .callout-tip .cico { color: #16a34a; }
+    .callout-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout-info .cico { color: #2563eb; }
+    .callout strong { color: inherit; }
+
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 4px; }
+    .flow .step { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; font-size: .82rem; font-weight: 600; color: #334155; }
+    .flow .arrow { color: #cbd5e1; font-size: .9rem; }
+
+    .docs-section table.tbl { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: .86rem; }
+    .docs-section table.tbl th { text-align: left; padding: 8px 10px; background: #f8fafc; color: #475569; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
+    .docs-section table.tbl td { padding: 8px 10px; border-bottom: 1px solid #eef2f6; color: #334155; vertical-align: top; }
+    .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+    .dot.g { background: #10b981; } .dot.a { background: #f59e0b; } .dot.k { background: #1f2937; }
+    .pill { display:inline-block; font-size:.72rem; font-weight:600; padding:2px 8px; border-radius:20px; background:#eef2ff; color:#4f46e5; }
+</style>
+{% endblock extracss %}
+
+{% block content %}
+
+<div class="docs-wrap">
+
+    <!-- ============ TABLE OF CONTENTS ============ -->
+    <nav class="docs-toc">
+        <div class="card">
+            <div class="card-body">
+                <div class="toc-title">{% trans "On this page" %}</div>
+                <a href="#overview">{% trans "How it fits together" %}</a>
+                <a href="#quickstart">{% trans "Quick start" %}</a>
+                <a href="#groups">{% trans "Groups" %}</a>
+                <a href="#users">{% trans "Users" %}</a>
+                <a href="#smpp">{% trans "SMPP Connectors" %}</a>
+                <a href="#http">{% trans "HTTP Connectors" %}</a>
+                <a href="#filters">{% trans "Filters" %}</a>
+                <a href="#mtroutes">{% trans "MT Routes" %}</a>
+                <a href="#moroutes">{% trans "MO Routes" %}</a>
+                <a href="#send">{% trans "Send a single SMS" %}</a>
+                <a href="#bulk">{% trans "Send bulk / campaigns" %}</a>
+                <a href="#logs">{% trans "Check logs" %}</a>
+                <a href="#status">{% trans "Status dots" %}</a>
+                <a href="#trouble">{% trans "Troubleshooting" %}</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ============ CONTENT ============ -->
+    <div>
+
+        <div class="card docs-lead mb-4">
+            <div class="card-body">
+                <h1>{% trans "Panel User Guide" %}</h1>
+                <p>{% trans "This guide explains what each section does, when to use it, and the exact order to set things up so your messages actually get delivered. If you only read one thing, read “How it fits together” and “Quick start”." %}</p>
+            </div>
+        </div>
+
+        <!-- OVERVIEW -->
+        <section id="overview" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-sitemap"></i></span>{% trans "How it fits together" %}</h2>
+                <div class="sec-sub">{% trans "The mental model. Every piece below exists to answer one question: where does this message go?" %}</div>
+
+                <p>{% trans "Sending an SMS through the gateway needs four things wired together, in this order:" %}</p>
+                <div class="flow">
+                    <span class="step">1. {% trans "Group" %}</span><span class="arrow">→</span>
+                    <span class="step">2. {% trans "User" %}</span><span class="arrow">→</span>
+                    <span class="step">3. {% trans "SMPP Connector" %}</span><span class="arrow">→</span>
+                    <span class="step">4. {% trans "MT Route" %}</span><span class="arrow">→</span>
+                    <span class="step">📱 {% trans "Delivered" %}</span>
+                </div>
+                <ul style="margin-top:12px;">
+                    <li><strong>{% trans "Group" %}</strong> — {% trans "a bucket that users belong to. Create it first because a user must be assigned to one." %}</li>
+                    <li><strong>{% trans "User" %}</strong> — {% trans "the account that authenticates and sends messages (the “from” side)." %}</li>
+                    <li><strong>{% trans "SMPP Connector" %}</strong> — {% trans "the outbound link that binds to your provider’s SMSC (the “to the world” side)." %}</li>
+                    <li><strong>{% trans "MT Route" %}</strong> — {% trans "the rule that connects a message to a connector. Without it, a message has nowhere to go." %}</li>
+                </ul>
+
+                <div class="callout callout-warn">
+                    <span class="cico"><i class="fas fa-triangle-exclamation fa-lg"></i></span>
+                    <div><strong>{% trans "The #1 mistake:" %}</strong> {% trans "creating an SMPP connector and stopping there. A connector on its own delivers nothing — you must also add an MT Route that points traffic at it. Otherwise messages fall through to the Default Route (often a stopped connector) and silently go nowhere, even though the panel says “sent”." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- QUICK START -->
+        <section id="quickstart" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-rocket"></i></span>{% trans "Quick start — first working setup" %}</h2>
+                <div class="sec-sub">{% trans "Do these in order. Skipping a step is the usual reason messages don’t arrive." %}</div>
+                <ol>
+                    <li>{% trans "Get connection details from your SMS provider: host, port, system-id (username), password (max 8 characters), and your source/sender ID." %}</li>
+                    <li><strong>{% trans "Groups" %}</strong> → {% trans "create a group (e.g." %} <code>customers</code>{% trans ")." %}</li>
+                    <li><strong>{% trans "Users" %}</strong> → {% trans "create a user inside that group. This is the account you’ll send with." %}</li>
+                    <li><strong>{% trans "SMPP Connectors" %}</strong> → {% trans "add a connector with the provider’s host/port/credentials, then press" %} <i class="fas fa-play-circle"></i> {% trans "to start it. Wait for the status dot to turn" %} <span class="dot g"></span>{% trans "green (bound)." %}</li>
+                    <li><strong>{% trans "MT Routes" %}</strong> → {% trans "add a route that sends your traffic to that connector (see the MT Routes section for the two common patterns)." %}</li>
+                    <li><strong>{% trans "Send SMS" %}</strong> → {% trans "send one test message to your own phone." %}</li>
+                    <li><strong>{% trans "Submit Logs" %}</strong> → {% trans "confirm a row appears with a success status." %}</li>
+                </ol>
+                <div class="callout callout-tip">
+                    <span class="cico"><i class="fas fa-lightbulb fa-lg"></i></span>
+                    <div>{% trans "If the test lands in Submit Logs with a success status and the phone receives it, your pipeline is correct. Everything after that (bulk, more users, more connectors) is just repetition." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GROUPS -->
+        <section id="groups" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-users"></i></span>{% trans "Groups" %} <span class="pill">{% trans "create first" %}</span></h2>
+                <div class="sec-sub">{% trans "A container for users. Enable/disable a whole set of users at once." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "before you create any user — every user must belong to a group. One group is enough to start; add more when you want to separate customers, teams, or billing buckets." %}</p>
+                <p><strong>{% trans "Why it matters:" %}</strong> {% trans "disabling a group disables all its users in one action, which is handy for suspending a customer without deleting anything." %}</p>
+            </div>
+        </section>
+
+        <!-- USERS -->
+        <section id="users" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-user"></i></span>{% trans "Users" %} <span class="pill">{% trans "the sender identity" %}</span></h2>
+                <div class="sec-sub">{% trans "The account that authenticates to send messages, and whose credentials your app or the Send SMS page uses." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "after a group exists, and before you can send anything. Create one user per customer/application that will send SMS." %}</p>
+                <ul>
+                    <li><strong>uid</strong> — {% trans "the user’s unique id (used by routes and filters to identify whose traffic it is)." %}</li>
+                    <li><strong>gid</strong> — {% trans "the group it belongs to." %}</li>
+                    <li><strong>{% trans "username / password" %}</strong> — {% trans "the login credentials used when sending." %}</li>
+                </ul>
+                <div class="callout callout-warn">
+                    <span class="cico"><i class="fas fa-key fa-lg"></i></span>
+                    <div><strong>{% trans "Password limit: 8 characters." %}</strong> {% trans "SMPP passwords are capped at 8 characters. A longer password is rejected by the form and would otherwise break the connection." %}</div>
+                </div>
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-circle-info fa-lg"></i></span>
+                    <div>{% trans "This “user” is a gateway sending account — it is different from your panel login. Per-user delivery is controlled by MT Routes: to send a specific user’s traffic through a specific connector, pair a User filter with an MT Route (see below)." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SMPP CONNECTORS -->
+        <section id="smpp" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-plug"></i></span>{% trans "SMPP Connectors" %} <span class="pill">{% trans "link to provider" %}</span></h2>
+                <div class="sec-sub">{% trans "The outbound bind to your provider’s SMSC. This is the pipe that carries messages out to the mobile networks." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "one connector per SMS provider/route you buy. Enter the host, port, system-id and password they gave you, then start it." %}</p>
+                <ul>
+                    <li>{% trans "Press" %} <i class="fas fa-play-circle"></i> {% trans "to start the connector; it will attempt to bind to the provider." %}</li>
+                    <li>{% trans "Watch the status dot — it must be" %} <span class="dot g"></span>{% trans "green (bound) before it can deliver. See “Status dots”." %}</li>
+                    <li>{% trans "Password is capped at 8 characters (provider must issue one that fits)." %}</li>
+                </ul>
+                <div class="callout callout-warn">
+                    <span class="cico"><i class="fas fa-triangle-exclamation fa-lg"></i></span>
+                    <div><strong>{% trans "A connector alone does nothing." %}</strong> {% trans "Starting a connector only opens the pipe. You still need an MT Route to send traffic into it. This is the step most often forgotten — do the MT Route next." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- HTTP CONNECTORS -->
+        <section id="http" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-globe"></i></span>{% trans "HTTP Connectors" %} <span class="pill">{% trans "optional" %}</span></h2>
+                <div class="sec-sub">{% trans "Outbound HTTP endpoints (webhooks) on your own servers — used to receive delivery receipts and forwarded inbound messages." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "only if you want the gateway to call your application over HTTP — for example, to push delivery-receipt (DLR) callbacks, or to forward inbound (MO) messages to your app. If you just send outbound SMS, you don’t need this." %}</p>
+                <ul>
+                    <li>{% trans "Give a connector id, the URL to call, and the HTTP method (GET/POST)." %}</li>
+                    <li>{% trans "HTTP connectors are the target of MO Routes (inbound) — the gateway forwards received messages to that URL." %}</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- FILTERS -->
+        <section id="filters" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-filter"></i></span>{% trans "Filters" %} <span class="pill">{% trans "the “which messages” rule" %}</span></h2>
+                <div class="sec-sub">{% trans "A reusable condition that a route uses to decide whether a message matches. Filters are the building blocks of routes." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "when you want a route to apply only to some messages instead of all of them — most commonly “messages from this specific user.”" %}</p>
+                <p><strong>{% trans "Common filter types:" %}</strong></p>
+                <ul>
+                    <li><strong>{% trans "User filter" %}</strong> — {% trans "matches messages sent by a specific user (uid). This is the one you’ll use most: pair it with an MT Route to give a user their own connector." %}</li>
+                    <li><strong>{% trans "Destination-address filter" %}</strong> — {% trans "matches by recipient number pattern (e.g. a country prefix), to route different destinations to different providers." %}</li>
+                    <li><strong>{% trans "Source/short-message/date-time filters" %}</strong> — {% trans "match by sender id, message content, or time window for more advanced routing." %}</li>
+                </ul>
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-circle-info fa-lg"></i></span>
+                    <div>{% trans "A filter does nothing by itself — it only takes effect when an MT Route (outbound) or MO Route (inbound) references it." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MT ROUTES -->
+        <section id="mtroutes" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-arrow-up"></i></span>{% trans "MT Routes" %} <span class="pill">{% trans "the delivery decision" %}</span></h2>
+                <div class="sec-sub">{% trans "MT = Mobile-Terminated (outbound, going to a handset). This is the rule that decides which connector carries each outgoing message." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "always — immediately after you start an SMPP connector. This is the step that actually makes messages flow." %}</p>
+
+                <p><strong>{% trans "Two common patterns:" %}</strong></p>
+                <ul>
+                    <li><strong>{% trans "Default Route" %}</strong> — {% trans "a catch-all (order 0) that sends every message with no more-specific match to one connector. Simplest setup: point the Default Route at your main connector and you’re done." %}</li>
+                    <li><strong>{% trans "Static Route + User filter" %}</strong> — {% trans "sends one specific user’s traffic to one specific connector. Use this when different customers must go out through different providers." %}</li>
+                </ul>
+
+                <div class="callout callout-warn">
+                    <span class="cico"><i class="fas fa-triangle-exclamation fa-lg"></i></span>
+                    <div><strong>{% trans "How the “sent but never delivered” trap happens:" %}</strong> {% trans "if a user has no matching route, their messages fall through to the Default Route. If that Default Route points at a stopped/unbound connector, the message is queued forever — the panel shows “sent”, but it is never delivered and never logged. Fix: give the user a Static Route to a bound connector, or point the Default Route at one." %}</div>
+                </div>
+
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-sort-numeric-down fa-lg"></i></span>
+                    <div><strong>{% trans "Order matters." %}</strong> {% trans "Routes are evaluated from highest order down to the Default Route (0). The first one whose filter matches wins. Put specific per-user routes above the catch-all." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MO ROUTES -->
+        <section id="moroutes" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-arrow-down"></i></span>{% trans "MO Routes" %} <span class="pill">{% trans "inbound only" %}</span></h2>
+                <div class="sec-sub">{% trans "MO = Mobile-Originated (inbound — a message someone sends TO your number). This decides what to do with messages you receive." %}</div>
+                <p><strong>{% trans "When to create:" %}</strong> {% trans "only if you receive inbound SMS (two-way messaging, keywords, replies). If you only send, you can ignore MO Routes entirely." %}</p>
+                <p><strong>{% trans "Why they’re used:" %}</strong> {% trans "an incoming message has to be handed somewhere — an MO Route forwards it to one of your HTTP Connectors (your app’s webhook) or to a user. Without an MO Route, inbound messages have no destination and are dropped." %}</p>
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-info-circle fa-lg"></i></span>
+                    <div>{% trans "In short: MT Routes handle what you send out; MO Routes handle what comes in. Most send-only setups need only MT Routes." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEND SMS -->
+        <section id="send" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-paper-plane"></i></span>{% trans "Send a single SMS" %}</h2>
+                <div class="sec-sub">{% trans "Best way to test that your whole setup works, end to end." %}</div>
+                <ol>
+                    <li>{% trans "Open" %} <strong>{% trans "Send SMS" %}</strong>.</li>
+                    <li>{% trans "Pick the sending user, enter the recipient number in full international format (e.g." %} <code>+905551234567</code>{% trans "), and type a short message." %}</li>
+                    <li>{% trans "Send it, then open" %} <strong>{% trans "Submit Logs" %}</strong> {% trans "to confirm a row appears with a success status." %}</li>
+                </ol>
+                <div class="callout callout-tip">
+                    <span class="cico"><i class="fas fa-lightbulb fa-lg"></i></span>
+                    <div>{% trans "Always send one single test message after any change to connectors or routes — it’s the fastest way to catch a broken route before a bulk run." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BULK -->
+        <section id="bulk" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-bullhorn"></i></span>{% trans "Send bulk SMS (Campaigns)" %}</h2>
+                <div class="sec-sub">{% trans "For sending the same (or templated) message to many recipients." %}</div>
+                <ol>
+                    <li>{% trans "Confirm a single test SMS works first — never debug routing during a bulk send." %}</li>
+                    <li>{% trans "Open" %} <strong>{% trans "Campaigns" %}</strong> {% trans "and create a new campaign." %}</li>
+                    <li>{% trans "Add your recipient list, choose the sending user, and write the message (templates let you personalise per recipient)." %}</li>
+                    <li>{% trans "Launch the campaign, then watch progress and results in the campaign view and in" %} <strong>{% trans "Submit Logs" %}</strong>.</li>
+                </ol>
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-gauge-high fa-lg"></i></span>
+                    <div>{% trans "Delivery speed is limited by your provider’s throughput and the connector’s configured rate. A large campaign is sent gradually, not all at once." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- LOGS -->
+        <section id="logs" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-list-alt"></i></span>{% trans "Check logs (Submit Logs)" %}</h2>
+                <div class="sec-sub">{% trans "Where you confirm what was sent, and see success vs error for each message." %}</div>
+                <p>{% trans "Every message that completes gets a row showing the sender, recipient, connector used, timestamp and status. Use it to verify delivery and to investigate failures. You can filter by date and export the results." %}</p>
+                <div class="callout callout-warn">
+                    <span class="cico"><i class="fas fa-triangle-exclamation fa-lg"></i></span>
+                    <div><strong>{% trans "A row only appears once the provider responds." %}</strong> {% trans "The log entry is written when the connector gets a response back from the SMSC. If a message was routed to a stopped/unbound connector, there is no response — so no row is written and nothing was actually delivered, even if the panel said “sent”. A missing log row almost always means a routing/connector problem, not a logging problem." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATUS DOTS -->
+        <section id="status" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-circle"></i></span>{% trans "Status dots (SMPP Connectors)" %}</h2>
+                <div class="sec-sub">{% trans "The coloured dot on the connectors page tells you the real bind state — not just whether the service is running." %}</div>
+                <table class="tbl">
+                    <thead><tr><th style="width:90px;">{% trans "Dot" %}</th><th>{% trans "Meaning" %}</th><th>{% trans "What to do" %}</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="dot g"></span>{% trans "Green" %}</td>
+                            <td>{% trans "Bound — both sides connected. Ready to deliver." %}</td>
+                            <td>{% trans "Nothing. This is the healthy state." %}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="dot a"></span>{% trans "Amber" %}</td>
+                            <td>{% trans "Started, but not bound. The service is trying but the provider hasn’t accepted the connection." %}</td>
+                            <td>{% trans "Check the password (≤8 chars), that your server IP is whitelisted with the provider, and that host/port are correct." %}</td>
+                        </tr>
+                        <tr>
+                            <td><span class="dot k"></span>{% trans "Grey" %}</td>
+                            <td>{% trans "Stopped. The connector isn’t running." %}</td>
+                            <td>{% trans "Press play to start it, then wait for green." %}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="callout callout-info">
+                    <span class="cico"><i class="fas fa-mouse-pointer fa-lg"></i></span>
+                    <div>{% trans "Hover a dot to see the exact underlying state. Only green means messages can actually go out through that connector." %}</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TROUBLESHOOTING -->
+        <section id="trouble" class="docs-section card mb-4">
+            <div class="card-body">
+                <h2><span class="sec-ico"><i class="fas fa-wrench"></i></span>{% trans "Troubleshooting" %}</h2>
+                <div class="sec-sub">{% trans "The most common issues and their fixes." %}</div>
+                <table class="tbl">
+                    <thead><tr><th style="width:38%;">{% trans "Symptom" %}</th><th>{% trans "Likely cause & fix" %}</th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td>{% trans "Panel says “sent” but nothing in Submit Logs and the phone gets nothing" %}</td>
+                            <td>{% trans "No MT Route for this user, so it fell through to a Default Route pointing at a stopped connector. Add a Static Route (User filter → a green/bound connector), or point the Default Route at a bound connector." %}</td>
+                        </tr>
+                        <tr>
+                            <td>{% trans "Connector dot is amber (started, not bound)" %}</td>
+                            <td>{% trans "Provider rejected the bind. Verify password (≤8 chars), host, port, and that your server’s IP is whitelisted on the provider side." %}</td>
+                        </tr>
+                        <tr>
+                            <td>{% trans "Can’t save a connector or user — password error" %}</td>
+                            <td>{% trans "The password is longer than 8 characters. SMPP allows a maximum of 8; ask the provider for a shorter one." %}</td>
+                        </tr>
+                        <tr>
+                            <td>{% trans "Messages for one customer go out the wrong provider" %}</td>
+                            <td>{% trans "Route order. A broader route above the specific one is matching first. Give the specific per-user route a higher order than the catch-all." %}</td>
+                        </tr>
+                        <tr>
+                            <td>{% trans "Inbound replies never reach my app" %}</td>
+                            <td>{% trans "No MO Route. Create one that forwards inbound messages to your HTTP Connector (webhook)." %}</td>
+                        </tr>
+                        <tr>
+                            <td>{% trans "New connector added but no traffic flows" %}</td>
+                            <td>{% trans "Connector created but not started, or started but no MT Route added. Start it (wait for green) and add the MT Route." %}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+</div>
+{% endblock content %}
+
+{% block extrajs %}
+<script>
+(function($){
+    $("li.nav-item.docs-menu").addClass("active");
+
+    // Smooth-scroll the TOC and highlight the section currently in view.
+    var $links = $(".docs-toc a");
+    $links.on("click", function(e){
+        var target = $($(this).attr("href"));
+        if (target.length) {
+            e.preventDefault();
+            $("html, body").animate({ scrollTop: target.offset().top - 16 }, 250);
+        }
+    });
+    var sections = $(".docs-section").map(function(){ return this; }).get();
+    function onScroll(){
+        var pos = $(window).scrollTop() + 80, current = null;
+        for (var i = 0; i < sections.length; i++) {
+            if ($(sections[i]).offset().top <= pos) current = sections[i].id;
+        }
+        if (current) {
+            $links.removeClass("active");
+            $links.filter('[href="#' + current + '"]').addClass("active");
+        }
+    }
+    $(window).on("scroll", onScroll);
+    onScroll();
+})(jQuery);
+</script>
+{% endblock extrajs %}

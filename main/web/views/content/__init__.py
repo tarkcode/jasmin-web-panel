@@ -1,4 +1,5 @@
 from .fake_dlr import fake_dlr_view, fake_dlr_view_manage
+from .docs import docs_view
 from .filters import filters_view, filters_view_manage
 from .groups import groups_view, groups_view_manage
 from .httpccm import httpccm_view, httpccm_view_manage
@@ -18,6 +19,7 @@ from .users import users_view, users_view_manage
 __all__ = [
     "fake_dlr_view",
     "fake_dlr_view_manage",
+    "docs_view",
     "filters_view",
     "filters_view_manage",
     "groups_view",

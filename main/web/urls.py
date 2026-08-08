@@ -28,6 +28,7 @@ urlpatterns = [
     path('submit_logs/', views.submit_logs_view, name='submit_logs_view'),
     path('users/manage/', views.users_view_manage, name='users_view_manage'),
     path('users/', views.users_view, name='users_view'),
+    path('docs/', views.docs_view, name='docs_view'),
     path('manage/', views.global_manage, name='global_manage'),
     path('', views.dashboard_view, name='dashboard_view'),
 ]
