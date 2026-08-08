@@ -16,6 +16,14 @@ SECRET_KEY = os.environ.get("SECRET_KEY", default='8na#(#x@0i*3ah%&$-q)b&wqu5ct_
 
 DEBUG = bool(os.environ.get("DEBUG", ''))
 
+# The panel is served over plain HTTP on a bare IP (no TLS/domain). Browsers
+# ignore Cross-Origin-Opener-Policy on non-HTTPS ("untrustworthy") origins and
+# log a console warning about it. Django 5 sends COOP: same-origin by default,
+# so every page load over HTTP produces that warning. Stop emitting the header
+# the browser will only reject. Remove this (revert to Django's default) once
+# the panel is served over HTTPS.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
+
 SITE_ID = int(os.environ.get("SITE_ID", default='1'))
 
 INSTALLED_APPS = [

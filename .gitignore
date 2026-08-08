@@ -83,3 +83,11 @@ github_personal_token.txt
 *.pem
 *.ppk
 jasmin-web-key.pem
+
+# Runtime artifacts generated on the server (never committed)
+.claude/
+*.bak
+*.bak.*
+# rotated logs (e.g. default-ArkaMKT.log.2026-07-17) — plain *.log already ignored
+logs/*.log.*
+jasmin_config/store/
