@@ -191,6 +191,43 @@
         }
     };
     
+    // ---- Password helper: a "Generate" button on every SMPP password field ----
+    // SMPP passwords are capped at 8 chars; generate a readable one (no ambiguous
+    // characters like 0/O/1/l/I). Scoped to .password-input so it only touches
+    // SMPP connector / user / onboarding fields, never login/profile passwords.
+    window.generatePassword = function(len) {
+        len = len || 8;
+        var lower = 'abcdefghijkmnpqrstuvwxyz', upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ', digits = '23456789';
+        var all = lower + upper + digits;
+        var pick = function(s) { return s.charAt(Math.floor(Math.random() * s.length)); };
+        var out = pick(lower) + pick(upper) + pick(digits);
+        while (out.length < len) { out += pick(all); }
+        return out.split('').sort(function() { return Math.random() - 0.5; }).join('').slice(0, len);
+    };
+    $(function() {
+        $('.password-input').each(function() {
+            var $grp = $(this).closest('.input-group');
+            if (!$grp.length) return;
+            var $append = $grp.find('.input-group-append').first();
+            if (!$append.length) { $append = $('<div class="input-group-append"></div>').appendTo($grp); }
+            if ($append.find('.generate-password').length) return;
+            $('<button class="btn btn-outline-secondary generate-password" type="button" title="Generate password"><i class="fas fa-key"></i></button>').prependTo($append);
+        });
+    });
+    $(document).on('click', '.generate-password', function(e) {
+        e.preventDefault();
+        var $grp = $(this).closest('.input-group');
+        var $inp = $grp.find('.password-input').first();
+        if (!$inp.length) $inp = $grp.find('input[type=password], input[type=text]').first();
+        var maxlen = parseInt($inp.attr('maxlength')) || 8;
+        var pwd = window.generatePassword(Math.min(maxlen, 8));
+        $inp.attr('type', 'text').val(pwd).trigger('change');
+        $grp.find('.toggle-password i').removeClass('fa-eye').addClass('fa-eye-slash');
+        if (typeof toastr !== 'undefined') {
+            toastr.info('Generated password: ' + pwd, { closeButton: true, timeOut: 7000 });
+        }
+    });
+
     // Form validation (if jQuery validate is available)
     if ($.fn.validate) {
         $("form").validate({

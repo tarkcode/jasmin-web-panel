@@ -24,7 +24,7 @@
                 <div class="alert alert-info">
                     {% trans "This creates a Group, a User, a matching UserFilter and an MT Route to the chosen SMPP connector — so the customer can start sending immediately." %}
                 </div>
-                <form id="onboard_form">
+                <form id="onboard_form">{% csrf_token %}
                     <h6 class="onboard-step">{% trans "1 · Group" %}</h6>
                     <div class="form-group row">
                         <label class="col-sm-3 col-form-label">{% trans "Group" %}</label>
