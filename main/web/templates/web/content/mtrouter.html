@@ -71,6 +71,7 @@
                                 {% endfor %}
                             </select>
                             <small class="text-muted">{% trans "DefaultRoute, StaticMTRoute, RandomRoundrobinMTRoute or FailoverMTRoute." %}</small>
+                            <small id="mt_type_hint" class="form-text text-warning" style="display:none;">{% trans "Default Route is always order 0, takes no filters, and only one can exist." %}</small>
                         </div>
                     </div>
                     <div class="form-group row">

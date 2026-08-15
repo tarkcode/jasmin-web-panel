@@ -94,6 +94,10 @@ class MTRouter(TelnetConnection):
         smppconnectors = data.get('smppconnectors') or ""
 
         if self.router_exists(order):
+            if route_type == "DefaultRoute":
+                raise MultipleValuesRequiredKeyError(
+                    'A Default Route already exists (only one is allowed, always at order 0). '
+                    'To add another route pick Static / Random Roundrobin / Failover and give it a unique order.')
             raise MultipleValuesRequiredKeyError('Order %s already exists' % order)
 
         self.telnet.sendline('mtrouter -a')

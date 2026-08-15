@@ -134,7 +134,25 @@
     collection_manage("smppccm");
     //collection_manage("httpccm");
     collection_manage("filters");
-    $("#add_new_obj").on('click', function(e){collection_manage('add');});
+    // DefaultRoute is special in Jasmin: it is always order 0, has no filters,
+    // and only one may exist. Reflect that in the form so users don't set an
+    // order/filter that gets silently overridden into an "Order 0 already exists".
+    var applyTypeRules = function(){
+        var t = $(add_modal_form+" select[name=type]").val();
+        var $order = $(add_modal_form+" input[name=order]");
+        var $filters = $(add_modal_form+" select[name=filters]");
+        if (t === "DefaultRoute") {
+            $order.val(0).prop("readonly", true).addClass("bg-light");
+            $filters.val([]).prop("disabled", true);
+            $("#mt_type_hint").show();
+        } else {
+            $order.prop("readonly", false).removeClass("bg-light");
+            $filters.prop("disabled", false);
+            $("#mt_type_hint").hide();
+        }
+    };
+    $(add_modal_form+" select[name=type]").on("change", applyTypeRules);
+    $("#add_new_obj").on('click', function(e){collection_manage('add'); applyTypeRules();});
     $(add_modal_form).on("submit", function(e){
         e.preventDefault();
         var serializeform = $(this).serialize();

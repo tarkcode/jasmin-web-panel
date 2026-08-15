@@ -147,10 +147,22 @@ class SMPPCCM(TelnetConnection):
             raise JasminSyntaxError(
                 detail=" ".join(self.telnet.match.group(1).split()))
         if ok_index == 1:
-            # Still in interactive mode, send 'ko' to cancel
+            # Still in interactive mode after 'ok' -> the commit was rejected
+            # (duplicate cid, or a value Jasmin refused). Capture whatever was
+            # on the buffer so the reason isn't swallowed, then 'ko' to cancel.
+            leftover = ''
+            try:
+                before = self.telnet.before
+                if isinstance(before, bytes):
+                    before = before.decode(errors='replace')
+                leftover = " ".join((before or '').split())[-200:]
+            except Exception:
+                pass
             self.telnet.sendline('ko')
             self.telnet.expect(r'.*' + STANDARD_PROMPT)
-            raise JasminSyntaxError(detail='Failed to create connector')
+            raise JasminSyntaxError(
+                detail=('Connector rejected (it may already exist or a value was invalid).'
+                        + (f' [{leftover}]' if leftover else '')))
         self.telnet.sendline('persist')
         self.telnet.expect(r'.*' + STANDARD_PROMPT)
         return {'cid': data['cid']}

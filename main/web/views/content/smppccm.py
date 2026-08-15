@@ -29,6 +29,14 @@ def smppccm_view_manage(request):
                 "message": str(_("CID cannot be empty or contain spaces. Use underscores instead.")),
                 "status": 400
             }, status=400)
+        # Reject a duplicate CID up-front with a clear message. Otherwise Jasmin
+        # fails the 'ok' commit and the panel only shows an opaque
+        # "Failed to create connector" with no reason.
+        if smppccm.get_smppccm(cid, silent=True) is not None:
+            return JsonResponse({
+                "message": str(_("A connector with this CID already exists.")) + f" ('{cid}')",
+                "status": 400
+            }, status=400)
         username = request.POST.get("username", "")
         if len(username) > 15:
             return JsonResponse({
