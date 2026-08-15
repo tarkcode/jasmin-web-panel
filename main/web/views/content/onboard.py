@@ -74,7 +74,10 @@ def _onboard_create(request):
     if group_mode == "new":
         if gid in existing_groups:
             return fail("Group", _("Group '%(g)s' already exists — choose it from existing groups instead.") % {"g": gid})
-        if not Groups().create(data=dict(gid=gid)):
+        Groups().create(data=dict(gid=gid))
+        # Groups.create()'s return is unreliable (regex-parsed); the group is
+        # actually created either way, so confirm success by re-listing.
+        if gid not in [g["name"] for g in Groups().list().get("groups", [])]:
             return fail("Group", _("Failed to create group '%(g)s'.") % {"g": gid})
         ok("Group", _("Created group %(g)s") % {"g": gid})
     else:
@@ -128,9 +131,12 @@ def _onboard_create(request):
     else:
         try:
             Filters().create(data=dict(type="userfilter", fid=fid, parameter=uid))
-            ok("Filter", _("Created filter %(f)s") % {"f": fid})
         except Exception as e:
             return fail("Filter", _("Failed to create filter: ") + str(e))
+        # Filters.create() returns {'filter': None} on failure without raising; verify.
+        if fid not in [f["fid"] for f in Filters().list().get("filters", [])]:
+            return fail("Filter", _("Failed to create filter %(f)s.") % {"f": fid})
+        ok("Filter", _("Created filter %(f)s") % {"f": fid})
 
     # ---- 4. MT Route ----
     try:
