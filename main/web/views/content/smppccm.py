@@ -32,7 +32,11 @@ def smppccm_view_manage(request):
         # Reject a duplicate CID up-front with a clear message. Otherwise Jasmin
         # fails the 'ok' commit and the panel only shows an opaque
         # "Failed to create connector" with no reason.
-        if smppccm.get_smppccm(cid, silent=True) is not None:
+        # NOTE: get_smppccm() returns {} (not None) for an unknown cid because
+        # jcli's "Unknown connector:" line still matches its generic branch, so
+        # we test for a real connector by the presence of a parsed 'cid' key.
+        existing = smppccm.get_smppccm(cid, silent=True)
+        if existing and existing.get("cid"):
             return JsonResponse({
                 "message": str(_("A connector with this CID already exists.")) + f" ('{cid}')",
                 "status": 400
