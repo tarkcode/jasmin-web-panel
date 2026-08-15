@@ -18,7 +18,7 @@ def fake_dlr_view_manage(request):
     response = {}
 
     if s == "list":
-        configs = FakeDLRConnectorModel.objects.all().order_by('cid')
+        configs = FakeDLRConnectorModel.objects.all().order_by('-created')
         response["configs"] = [{
             "id": c.id,
             "cid": c.cid,

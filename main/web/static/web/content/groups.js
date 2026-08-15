@@ -14,7 +14,8 @@
             },
             dataType: "json",
             success: function(data){
-                var datalist = data["groups"];
+                // Sort recent: jcli lists oldest-first, so reverse for newest-added on top.
+                var datalist = (data["groups"] || []).slice().reverse();
                 var output = $.map(datalist, function(val, i){
                     var html = "";
                     html += `<tr>

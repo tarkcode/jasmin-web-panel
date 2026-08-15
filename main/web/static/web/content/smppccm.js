@@ -15,7 +15,8 @@
             },
             dataType: "json",
             success: function(data){
-                var datalist = data["connectors"];
+                // Sort recent: jcli lists oldest-first, so reverse for newest-added on top.
+                var datalist = (data["connectors"] || []).slice().reverse();
                 var output = $.map(datalist, function(val, i){
                     var html = "";
                     var maskedPassword = val.password ? '•'.repeat(Math.min(val.password.length, 8)) : '';
