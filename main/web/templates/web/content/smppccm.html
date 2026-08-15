@@ -423,6 +423,39 @@
         </div>
     </div>
 </div>
+<style>
+.log-view{background:#0d1117;color:#c9d1d9;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;line-height:1.5;border-radius:8px;padding:10px 12px;height:52vh;overflow:auto;
+  white-space:pre-wrap;word-break:break-word;}
+.log-view .log-line{padding:1px 0;}
+.log-view .log-err{color:#ff7b72;}
+.log-view .log-warn{color:#e3b341;}
+</style>
+<div class="modal fade" id="logs_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logs_modal_title">{% trans "Connector logs" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div id="logs_reason" class="alert alert-info mb-2">{% trans "Loading…" %}</div>
+                <div class="d-flex align-items-center mb-2" style="gap:14px;">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="logs_errors_only">
+                        <label class="custom-control-label" for="logs_errors_only">{% trans "Errors only" %}</label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-light" id="logs_refresh"><i class="fas fa-sync-alt mr-1"></i>{% trans "Refresh" %}</button>
+                    <small class="text-muted ml-auto">{% trans "Auto-refreshes every 5s · newest at bottom" %}</small>
+                </div>
+                <div id="logs_body" class="log-view"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 {% block extrajs %}
 <script>

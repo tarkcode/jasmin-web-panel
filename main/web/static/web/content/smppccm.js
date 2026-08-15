@@ -3,6 +3,7 @@
     var add_modal_form = "#add_modal_form", edit_modal_form = "#edit_modal_form", service_modal_form = "#service_modal_form";
     var variant_boxes = [add_modal_form, edit_modal_form, service_modal_form];
     var SMPPCCM_DICT = {};
+    var logsCid = null, logsTimer = null;
     var collectionlist_check = function() {
         $.ajax({
             url: local_path + 'manage/',
@@ -47,6 +48,7 @@
                         <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
                             <div class="btn-group btn-group-sm">
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('service', '${i+1}');"><i class="fas fa-play-circle"></i></a>
+                                <a href="javascript:void(0)" class="btn btn-light" title="View logs / status reason" onclick="return collection_manage('logs', '${i+1}');"><i class="fas fa-file-alt"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('delete', '${i+1}');"><i class="fas fa-trash"></i></a>
                             </div>
@@ -112,6 +114,15 @@
             var data = SMPPCCM_DICT[index];
             $(service_modal_form+" input[name=cid]").val(data.cid);
             $("#collection_modal").modal("show");
+        } else if (cmd == "logs") {
+            var data = SMPPCCM_DICT[index];
+            logsCid = data.cid;
+            $("#logs_modal_title").text("Logs — " + data.cid);
+            $("#logs_errors_only").prop("checked", false);
+            $("#logs_reason").removeClass("alert-success alert-warning").addClass("alert-info").text("Loading…");
+            $("#logs_body").html('<div class="text-muted p-3">Loading…</div>');
+            loadConnectorLogs();
+            $("#logs_modal").modal("show");
         } else if (cmd == "delete") {
             sweetAlert({
                 title: global_trans["areyousuretodelete"],
@@ -187,5 +198,45 @@
         }
     });
     
+    function escapeHtml(s){ return $('<div>').text(s == null ? '' : String(s)).html(); }
+    function loadConnectorLogs(){
+        if(!logsCid) return;
+        var errorsOnly = $("#logs_errors_only").is(":checked");
+        $.ajax({
+            url: local_path + 'manage/',
+            type: "POST",
+            data: { csrfmiddlewaretoken: csrfmiddlewaretoken, s: "logs", cid: logsCid, errors_only: errorsOnly, lines: 250 },
+            dataType: "json",
+            success: function(data){
+                var reason = data.reason || "";
+                var bound = /^Connected/i.test(reason);
+                var $b = $("#logs_reason").removeClass("alert-success alert-warning alert-info");
+                $b.addClass(bound ? "alert-success" : (data.available ? "alert-warning" : "alert-info"));
+                $b.html('<i class="fas fa-'+(bound?'check-circle':'exclamation-triangle')+' mr-2"></i>'+ escapeHtml(reason));
+                var lines = data.lines || [];
+                if(!lines.length){
+                    $("#logs_body").html('<div class="text-muted p-3">'+ (data.available ? 'No matching log lines.' : 'No log file yet.') +'</div>');
+                } else {
+                    var html = lines.map(function(ln){
+                        var cls = (/\bERROR\b|Bind failed|ESME_/.test(ln)) ? 'log-err' : ((/\bWARNING\b/.test(ln)) ? 'log-warn' : '');
+                        return '<div class="log-line '+cls+'">'+ escapeHtml(ln) +'</div>';
+                    }).join('');
+                    $("#logs_body").html(html);
+                    var el = document.getElementById('logs_body'); if(el){ el.scrollTop = el.scrollHeight; }
+                }
+            },
+            error: function(){ $("#logs_body").html('<div class="text-danger p-3">Failed to load logs.</div>'); }
+        });
+    }
+    $("#logs_modal").on("shown.bs.modal", function(){
+        if(logsTimer) clearInterval(logsTimer);
+        logsTimer = setInterval(loadConnectorLogs, 5000);
+    }).on("hidden.bs.modal", function(){
+        if(logsTimer){ clearInterval(logsTimer); logsTimer = null; }
+        logsCid = null;
+    });
+    $(document).on("change", "#logs_errors_only", function(){ loadConnectorLogs(); });
+    $(document).on("click", "#logs_refresh", function(){ loadConnectorLogs(); });
+
     $("li.nav-item.smppccm-menu").addClass("active");
 })(jQuery);

@@ -1,3 +1,5 @@
+import os
+import re
 import time
 
 from django.utils.translation import gettext as _
@@ -9,6 +11,88 @@ from main.core.smpp import SMPPCCM
 from main.core.tools import require_post_ajax
 from main.core.exceptions import JasminSyntaxError, JasminError, UnknownError
 
+# Jasmin writes one log per connector here (mounted read-only into this container).
+LOG_DIR = "/var/log/jasmin"
+# cids are alphanumeric/underscore/dash — this also blocks path traversal.
+_CID_RE = re.compile(r"^[A-Za-z0-9_\-]{1,60}$")
+
+
+def _tail_lines(path, n):
+    """Return the last `n` non-empty lines of a (possibly large) log file."""
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            remaining = f.tell()
+            buf = b""
+            while remaining > 0 and buf.count(b"\n") <= n:
+                step = 8192 if remaining >= 8192 else remaining
+                remaining -= step
+                f.seek(remaining)
+                buf = f.read(step) + buf
+            text = buf.decode("utf-8", errors="replace")
+    except OSError:
+        return []
+    lines = [ln.rstrip("\r") for ln in text.splitlines() if ln.strip()]
+    return lines[-n:]
+
+
+def _summarize_reason(lines):
+    """Turn the most recent meaningful log event into a plain-English reason."""
+    patterns = [
+        ("ESME_RINVPASWD", _("Not connected — the provider rejected our password (Invalid Password). Verify the connector's password with the provider (max 8 characters).")),
+        ("ESME_RINVSYSID", _("Not connected — the provider rejected our username / System ID (Invalid System ID). Verify the username with the provider.")),
+        ("ESME_RINVSYSTYP", _("Not connected — the provider rejected the System Type. Verify the 'System Type' value with the provider.")),
+        ("ESME_RBINDFAIL", _("Not connected — the provider refused the bind. The account may be disabled, or already bound from elsewhere.")),
+        ("ESME_RINVBNDSTS", _("Not connected — invalid bind status. The account may already be bound elsewhere, or the bind type is wrong.")),
+        ("Connection refused", _("Not connected — the provider's server refused the connection (wrong port, or their service is down).")),
+        ("TimeoutError", _("Not connected — the provider's server is unreachable (connection timed out). Check host/port and ask the provider to whitelist our server IP.")),
+        ("Connection failed", _("Not connected — could not reach the provider's server. Check host/port and ask the provider to whitelist our server IP.")),
+    ]
+    for ln in reversed(lines):
+        for token, msg in patterns:
+            if token in ln:
+                return str(msg)
+        # a fresh successful bind after any error clears the reason
+        if "bound" in ln.lower() and "requesting" not in ln.lower():
+            return str(_("Connected — bind established."))
+    for ln in reversed(lines):
+        m = re.search(r"ESME_\w+", ln)
+        if m:
+            return str(_("Not connected — the provider returned %(code)s.")) % {"code": m.group(0)}
+    return str(_("No recent connection errors found in the log."))
+
+
+def _connector_logs(request):
+    """Return the tail of a connector's Jasmin log plus a plain-English reason."""
+    cid = (request.POST.get("cid") or "").strip()
+    if not _CID_RE.match(cid):
+        return JsonResponse({"message": str(_("Invalid connector id.")), "status": 400}, status=400)
+    try:
+        max_lines = max(20, min(int(request.POST.get("lines", 250)), 1000))
+    except (TypeError, ValueError):
+        max_lines = 250
+    errors_only = request.POST.get("errors_only") == "true"
+
+    path = os.path.join(LOG_DIR, "default-%s.log" % cid)
+    # Defence in depth: the resolved file must sit directly inside LOG_DIR.
+    if os.path.dirname(os.path.realpath(path)) != os.path.realpath(LOG_DIR):
+        return JsonResponse({"message": str(_("Invalid connector id.")), "status": 400}, status=400)
+
+    if not os.path.isfile(path):
+        return JsonResponse({
+            "cid": cid, "lines": [], "available": False,
+            "reason": str(_("No log file for this connector yet (it may never have started).")),
+            "status": 200,
+        })
+
+    lines = _tail_lines(path, max_lines)
+    reason = _summarize_reason(lines)
+    if errors_only:
+        lines = [ln for ln in lines if (" ERROR " in ln or " WARNING " in ln or "Bind failed" in ln or "ESME_" in ln)]
+    return JsonResponse({
+        "cid": cid, "lines": lines, "reason": reason, "available": True, "status": 200,
+    })
+
 
 @login_required
 def smppccm_view(request):
@@ -19,6 +103,9 @@ def smppccm_view(request):
 def smppccm_view_manage(request):
     response = {}
     s = request.POST.get("s")
+    if s == "logs":
+        # Reading a log file needs no telnet session — handle before opening one.
+        return _connector_logs(request)
     smppccm = SMPPCCM()
     if s == "list":
         response = smppccm.list()
