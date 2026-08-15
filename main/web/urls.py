@@ -29,6 +29,8 @@ urlpatterns = [
     path('users/manage/', views.users_view_manage, name='users_view_manage'),
     path('users/', views.users_view, name='users_view'),
     path('docs/', views.docs_view, name='docs_view'),
+    path('onboard/manage/', views.onboard_view_manage, name='onboard_view_manage'),
+    path('onboard/', views.onboard_view, name='onboard_view'),
     path('manage/', views.global_manage, name='global_manage'),
     path('', views.dashboard_view, name='dashboard_view'),
 ]

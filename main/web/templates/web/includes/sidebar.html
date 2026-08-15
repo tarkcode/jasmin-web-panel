@@ -34,6 +34,11 @@
     </li>
 
     <li class="nav-section">{% trans "Identity" %}</li>
+    <li class="nav-item onboard-menu">
+        <a class="nav-link" href="{% url 'web:onboard_view' %}">
+            <i class="fas fa-fw fa-user-plus"></i><span>{% trans 'Onboard Customer' %}</span>
+        </a>
+    </li>
     <li class="nav-item users-menu">
         <a class="nav-link" href="{% url 'web:users_view' %}">
             <i class="fas fa-fw fa-user"></i><span>{% trans 'Users' %}</span>
