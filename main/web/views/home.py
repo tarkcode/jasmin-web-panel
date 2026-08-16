@@ -115,4 +115,67 @@ def global_manage(request):
         response['failed'] = failed_data
         response['status'] = 'success'
 
+    elif s == "business_overview":
+        from django.utils import timezone
+        from main.core.smpp import SMPPCCM, Users
+        from main.core.models import RouteDetail, RouteAssignment
+
+        # Connectors: bound (both sides up) vs not
+        active = down = 0
+        try:
+            for c in SMPPCCM().list().get("connectors", []):
+                if c.get("status") == "started" and str(c.get("session", "")).startswith("BOUND"):
+                    active += 1
+                else:
+                    down += 1
+        except Exception:
+            pass
+        try:
+            users_count = len(Users().list().get("users", []))
+        except Exception:
+            users_count = 0
+
+        # Today's traffic
+        now = timezone.localtime()
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        todays = SubmitLog.objects.filter(created_at__gte=start)
+        total_today = todays.count()
+        ok_statuses = ['ESME_ROK', 'ESME_RINVNUMDESTS', 'DELIVRD']
+        delivered_today = todays.filter(status__in=ok_statuses).count()
+        delivered_pct = round(delivered_today / total_today * 100, 1) if total_today else 0.0
+
+        # Revenue / cost / margin today = today's messages x configured prices
+        buy = {rd.smpp_connector: float(rd.buy_price) for rd in RouteDetail.objects.filter(status='active')}
+        sell = {}
+        currency = "USD"
+        for a in RouteAssignment.objects.filter(status='active').select_related('route'):
+            sell[(a.uid, a.route.smpp_connector)] = float(a.sell_price)
+            if a.route.currency:
+                currency = a.route.currency
+        cost = revenue = 0.0
+        for row in todays.values('uid', 'routed_cid').annotate(n=Count('id')):
+            n, uid, cid = row['n'], row['uid'], row['routed_cid']
+            if cid in buy:
+                cost += n * buy[cid]
+            if (uid, cid) in sell:
+                revenue += n * sell[(uid, cid)]
+        margin = revenue - cost
+        margin_pct = round(margin / cost * 100, 1) if cost else None
+
+        response.update({
+            "connections_active": active,
+            "connections_down": down,
+            "users_count": users_count,
+            "messages_today": total_today,
+            "delivered_pct": delivered_pct,
+            "routes_count": RouteDetail.objects.count(),
+            "assignments_count": RouteAssignment.objects.count(),
+            "cost_today": round(cost, 4),
+            "revenue_today": round(revenue, 4),
+            "margin_today": round(margin, 4),
+            "margin_pct": margin_pct,
+            "currency": currency,
+            "status": "success",
+        })
+
     return JsonResponse(response, status=200)

@@ -78,6 +78,7 @@
 .legend-row .item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--jp-text-muted); }
 .legend-row .item .swatch { width: 8px; height: 8px; border-radius: 2px; }
 .legend-row .item strong { color: var(--jp-text); font-feature-settings: "tnum"; font-weight: 600; }
+.section-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--jp-text-muted); font-weight: 600; margin: 2px 0 10px; }
 </style>
 {% endblock extracss %}
 {% block content %}
@@ -98,7 +99,63 @@
     </div>
 </div>
 
+<!-- Business overview (today) -->
+<div class="section-eyebrow">{% trans "Today" %}</div>
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-icon bg-blue"><i class="fas fa-plug"></i></div>
+        <div class="kpi-label">{% trans "Connections" %}</div>
+        <div class="kpi-value"><span id="biz-conn-active">–</span><span style="font-size:16px;color:var(--jp-text-muted);"> / <span id="biz-conn-down">–</span></span></div>
+        <div class="kpi-foot">{% trans "bound / not bound" %}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-green"><i class="fas fa-users"></i></div>
+        <div class="kpi-label">{% trans "Users" %}</div>
+        <div class="kpi-value" id="biz-users">–</div>
+        <div class="kpi-foot">{% trans "total accounts" %}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-blue"><i class="fas fa-paper-plane"></i></div>
+        <div class="kpi-label">{% trans "Messages today" %}</div>
+        <div class="kpi-value" id="biz-msgs">–</div>
+        <div class="kpi-foot"><span id="biz-delivered">–</span>% {% trans "delivered / OK" %}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-amber"><i class="fas fa-route"></i></div>
+        <div class="kpi-label">{% trans "Routes" %}</div>
+        <div class="kpi-value" id="biz-routes">–</div>
+        <div class="kpi-foot"><span id="biz-assignments">–</span> {% trans "assignments" %}</div>
+    </div>
+</div>
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-icon bg-green"><i class="fas fa-arrow-down"></i></div>
+        <div class="kpi-label">{% trans "Revenue today" %}</div>
+        <div class="kpi-value"><span id="biz-revenue">–</span> <span class="biz-cur" style="font-size:14px;color:var(--jp-text-muted);"></span></div>
+        <div class="kpi-foot">{% trans "billed to customers" %}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-red"><i class="fas fa-arrow-up"></i></div>
+        <div class="kpi-label">{% trans "Route cost today" %}</div>
+        <div class="kpi-value"><span id="biz-cost">–</span> <span class="biz-cur" style="font-size:14px;color:var(--jp-text-muted);"></span></div>
+        <div class="kpi-foot">{% trans "paid to providers" %}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-blue"><i class="fas fa-coins"></i></div>
+        <div class="kpi-label">{% trans "Gross margin today" %}</div>
+        <div class="kpi-value"><span id="biz-margin">–</span> <span class="biz-cur" style="font-size:14px;color:var(--jp-text-muted);"></span></div>
+        <div class="kpi-foot"><span id="biz-margin-pct"></span></div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-icon bg-amber"><i class="fas fa-info"></i></div>
+        <div class="kpi-label">{% trans "How it's counted" %}</div>
+        <div class="kpi-value" style="font-size:12.5px;font-weight:500;line-height:1.35;">{% trans "Today's messages × configured buy/sell prices" %}</div>
+        <div class="kpi-foot">{% trans "from Route Details & Assignments" %}</div>
+    </div>
+</div>
+
 <!-- KPI grid -->
+<div class="section-eyebrow">{% trans "All time" %}</div>
 <div class="kpi-grid">
     <div class="kpi-card">
         <div class="kpi-icon bg-blue"><i class="fas fa-paper-plane"></i></div>
@@ -230,4 +287,26 @@ var chartData = {
 };
 </script>
 <script type="text/javascript" src="{% static 'web/dashboard.js' %}"></script>
+<script>
+(function($){
+    function fmt(n){ return (n === null || n === undefined) ? '–' : Number(n).toLocaleString(undefined, {maximumFractionDigits: 4}); }
+    $.getJSON("{% url 'web:global_manage' %}", { s: "business_overview" }, function(d){
+        if (!d || d.status !== 'success') return;
+        $("#biz-conn-active").text(d.connections_active);
+        $("#biz-conn-down").text(d.connections_down);
+        $("#biz-users").text(fmt(d.users_count));
+        $("#biz-msgs").text(fmt(d.messages_today));
+        $("#biz-delivered").text(d.delivered_pct);
+        $("#biz-routes").text(fmt(d.routes_count));
+        $("#biz-assignments").text(fmt(d.assignments_count));
+        $("#biz-revenue").text(fmt(d.revenue_today));
+        $("#biz-cost").text(fmt(d.cost_today));
+        $("#biz-margin").text(fmt(d.margin_today));
+        $("#biz-margin-pct").text(d.margin_pct === null ? '' : (d.margin_pct + '% margin'));
+        $(".biz-cur").text(d.currency || '');
+        var m = Number(d.margin_today);
+        $("#biz-margin").css('color', m > 0 ? 'var(--jp-success)' : (m < 0 ? 'var(--jp-danger)' : ''));
+    });
+})(jQuery);
+</script>
 {% endblock extrajs %}
