@@ -49,7 +49,7 @@ class WalletTransaction(TimeStampedModel):
         return {
             "id": self.id,
             "type": self.txn_type,
-            "type_display": self.get_type_display(),
+            "type_display": self.get_txn_type_display(),
             "amount": str(self.amount),
             "balance_after": (str(self.balance_after) if self.balance_after is not None else None),
             "description": self.description,
