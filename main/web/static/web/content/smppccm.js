@@ -3,7 +3,7 @@
     var add_modal_form = "#add_modal_form", edit_modal_form = "#edit_modal_form", service_modal_form = "#service_modal_form";
     var variant_boxes = [add_modal_form, edit_modal_form, service_modal_form];
     var SMPPCCM_DICT = {};
-    var logsCid = null, logsTimer = null;
+    var logsCid = null;
     var collectionlist_check = function() {
         $.ajax({
             url: local_path + 'manage/',
@@ -230,13 +230,9 @@
             error: function(){ $("#logs_body").html('<div class="text-danger p-3">Failed to load logs.</div>'); }
         });
     }
-    $("#logs_modal").on("shown.bs.modal", function(){
-        if(logsTimer) clearInterval(logsTimer);
-        logsTimer = setInterval(loadConnectorLogs, 5000);
-    }).on("hidden.bs.modal", function(){
-        if(logsTimer){ clearInterval(logsTimer); logsTimer = null; }
-        logsCid = null;
-    });
+    // Manual refresh only (loads once on open + the Refresh button) to avoid
+    // needless jcli/file load from polling a flapping connector.
+    $("#logs_modal").on("hidden.bs.modal", function(){ logsCid = null; });
     $(document).on("change", "#logs_errors_only", function(){ loadConnectorLogs(); });
     $(document).on("click", "#logs_refresh", function(){ loadConnectorLogs(); });
 
