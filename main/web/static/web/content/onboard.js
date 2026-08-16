@@ -1,40 +1,63 @@
 (function($){
     var csrf = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+    var USERS = {};
     function esc(s){ return $('<div>').text(s == null ? '' : String(s)).html(); }
 
-    // Populate existing groups (newest first, matching the Sort Recent behaviour).
-    $.ajax({ url: main_trans.url2groups, type: "POST", dataType: "json",
-        data: { csrfmiddlewaretoken: csrf, s: "list" },
+    // Load existing groups + users (with stored credentials) for the pickers.
+    $.ajax({ url: main_trans.url2onboard, type: "POST", dataType: "json",
+        data: { csrfmiddlewaretoken: csrf, s: "meta" },
         success: function(d){
-            var opts = (d.groups || []).slice().reverse().map(function(g){
-                return '<option value="'+esc(g.name)+'">'+esc(g.name)+'</option>';
+            var gopts = (d.groups || []).slice().reverse().map(function(g){
+                return '<option value="'+esc(g)+'">'+esc(g)+'</option>';
             }).join('');
-            $("#gid_existing").html(opts || '<option value="">(no groups yet — choose "Create new")</option>');
+            $("#gid_existing").html(gopts || '<option value="">(no groups yet — choose "Create new")</option>');
+
+            var uopts = (d.users || []).slice().reverse().map(function(u){
+                return '<option value="'+esc(u.uid)+'">'+esc(u.uid)+' ('+esc(u.username)+')</option>';
+            }).join('');
+            $("#existing_uid").html(uopts || '<option value="">(no users yet)</option>');
+            (d.users || []).forEach(function(u){ USERS[u.uid] = u; });
         }
     });
 
-    // Populate SMPP connectors, flagging the ones that are actually bound.
-    $.ajax({ url: main_trans.url2smppccm, type: "POST", dataType: "json",
-        data: { csrfmiddlewaretoken: csrf, s: "list" },
-        success: function(d){
-            var opts = (d.connectors || []).slice().reverse().map(function(c){
-                var bound = /^BOUND/.test(c.session || "");
-                return '<option value="'+esc(c.cid)+'">'+esc(c.cid)+(bound ? ' — connected' : ' — not connected')+'</option>';
-            }).join('');
-            $("#connector").html(opts || '<option value="">(no connectors)</option>');
+    // Fill the connector username/password from a selected existing user.
+    function syncFromExistingUser(){
+        var u = USERS[$("#existing_uid").val()];
+        if (!u) return;
+        $("#conn_username").val(u.username || "");
+        if (u.password){
+            $("#conn_password").val(u.password).attr('type', 'text');
+            $("#existing_note").removeClass("text-warning").addClass("text-muted")
+                .text("Username & password applied to the connector above.");
+        } else {
+            $("#conn_password").val("");
+            $("#existing_note").removeClass("text-muted").addClass("text-warning")
+                .text("This user's password isn't stored — type it above so the connector matches.");
+        }
+    }
+
+    $('input[name=user_mode]').on('change', function(){
+        if ($(this).val() === 'existing'){
+            $("#usr_new_wrap").hide(); $("#usr_existing_wrap").show(); $("#group_section").hide();
+            syncFromExistingUser();
+        } else {
+            $("#usr_existing_wrap").hide(); $("#usr_new_wrap").show(); $("#group_section").show();
         }
     });
+    $("#existing_uid").on('change', syncFromExistingUser);
 
     $('input[name=group_mode]').on('change', function(){
-        if ($(this).val() === 'new') { $("#gid_existing").hide(); $("#gid_new").show(); }
+        if ($(this).val() === 'new'){ $("#gid_existing").hide(); $("#gid_new").show(); }
         else { $("#gid_new").hide(); $("#gid_existing").show(); }
     });
+
+    $("#make_route").on('change', function(){ $("#rate_wrap").toggle(this.checked); });
 
     $(document).on('click', '.toggle-password', function(e){
         e.preventDefault();
         var $i = $(this).closest('.input-group').find('.password-input');
         var $ic = $(this).find('i');
-        if ($i.attr('type') === 'password') { $i.attr('type', 'text'); $ic.removeClass('fa-eye').addClass('fa-eye-slash'); }
+        if ($i.attr('type') === 'password'){ $i.attr('type', 'text'); $ic.removeClass('fa-eye').addClass('fa-eye-slash'); }
         else { $i.attr('type', 'password'); $ic.removeClass('fa-eye-slash').addClass('fa-eye'); }
     });
 
@@ -46,24 +69,19 @@
             return '<div class="step-line">'+icon+'<strong>'+esc(s.step)+'</strong> — '+esc(s.detail)+'</div>';
         }).join('');
     }
-
-    function resetBtn($btn){ $btn.prop('disabled', false).html('<i class="fas fa-user-plus mr-1"></i>Create customer'); }
+    function resetBtn($btn){ $btn.prop('disabled', false).html('<i class="fas fa-plus mr-1"></i>Create'); }
 
     $("#onboard_form").on('submit', function(e){
         e.preventDefault();
-        var mode = $('input[name=group_mode]:checked').val();
-        var gid = mode === 'new' ? $("#gid_new").val() : $("#gid_existing").val();
+        var mode = $('input[name=user_mode]:checked').val();
+        var gmode = $('input[name=group_mode]:checked').val();
         var payload = {
             csrfmiddlewaretoken: csrf, s: "create",
-            group_mode: mode, gid: gid,
-            uid: $("input[name=uid]").val(),
-            username: $("input[name=username]").val(),
-            password: $("input[name=password]").val(),
-            balance: $("input[name=balance]").val(),
-            smpps_throughput: $("input[name=smpps_throughput]").val(),
-            http_throughput: $("input[name=http_throughput]").val(),
-            connector: $("#connector").val(),
-            rate: $("input[name=rate]").val()
+            cid: $("input[name=cid]").val(), host: $("input[name=host]").val(), port: $("input[name=port]").val(),
+            username: $("#conn_username").val(), password: $("#conn_password").val(),
+            user_mode: mode, uid: $("#uid_new").val(), existing_uid: $("#existing_uid").val(),
+            group_mode: gmode, gid: (gmode === 'new' ? $("#gid_new").val() : $("#gid_existing").val()),
+            make_route: $("#make_route").is(":checked") ? "true" : "false", rate: $("#rate").val()
         };
         var $btn = $("#onboard_submit").prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Working…');
         $("#onboard_result").html('<div class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Creating…</div>');
