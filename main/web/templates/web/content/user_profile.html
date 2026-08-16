@@ -1,0 +1,112 @@
+{% extends "web/base.html" %}
+{% load static i18n humanize %}
+{% block title %}{{ uid }} · {% trans "User Profile" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "User Profile" %}{% endblock page_title %}
+{% block content %}
+<style>
+.stat-cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+@media(max-width:991px){ .stat-cards{ grid-template-columns:repeat(2,1fr);} }
+.stat-cards .sc { border:1px solid var(--jp-border,#e5e7eb); border-radius:12px; padding:14px 16px; background:var(--jp-surface,#fff); }
+.stat-cards .sc .n { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; }
+.stat-cards .sc .l { font-size:12px; color:var(--jp-text-muted,#6b7280); text-transform:uppercase; letter-spacing:.04em; }
+.info-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(128,128,128,.12); font-size:14px; }
+.info-row:last-child { border-bottom:0; }
+.info-row .k { color:var(--jp-text-muted,#6b7280); }
+.info-row .v { font-weight:600; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{{ uid }}</h1>
+        <div class="ph-sub">{% trans "Customer profile — account details, activity and statistics." %}</div>
+    </div>
+    <div class="ph-actions">
+        <a class="btn btn-light btn-sm" href="{% url 'web:users_view' %}"><i class="fas fa-arrow-left mr-1"></i> {% trans "Back to Users" %}</a>
+    </div>
+</div>
+
+{% if not_found %}
+<div class="alert alert-warning">{% trans "This user was not found in Jasmin." %} ({{ uid }})</div>
+{% endif %}
+
+<!-- headline stats (all-time) -->
+<div class="stat-cards">
+    <div class="sc"><div class="n">{{ stats.all.total|default:0|intcomma }}</div><div class="l">{% trans "Total submitted" %}</div></div>
+    <div class="sc"><div class="n text-success">{{ stats.all.delivered|default:0|intcomma }}</div><div class="l">{% trans "Delivered" %}</div></div>
+    <div class="sc"><div class="n text-danger">{{ stats.all.failed|default:0|intcomma }}</div><div class="l">{% trans "Failed" %}</div></div>
+    <div class="sc"><div class="n text-warning">{{ stats.all.pending|default:0|intcomma }}</div><div class="l">{% trans "Pending" %}</div></div>
+    <div class="sc"><div class="n text-muted">{{ stats.all.rejected|default:0|intcomma }}</div><div class="l">{% trans "Rejected" %}</div></div>
+</div>
+
+<div class="row">
+    <div class="col-lg-5 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "User information" %}</h6></div>
+            <div class="card-body">
+                {% if info %}
+                <div class="info-row"><span class="k">{% trans "Username" %}</span><span class="v">{{ info.username|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "User ID" %}</span><span class="v">{{ info.uid }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Group" %}</span><span class="v">{{ info.gid|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Status" %}</span><span class="v">{% if info.status == 'enabled' %}<span class="badge badge-success">{% trans "Enabled" %}</span>{% else %}<span class="badge badge-secondary">{{ info.status|default:"—" }}</span>{% endif %}</span></div>
+                <div class="info-row"><span class="k">{% trans "Wallet balance" %}</span><span class="v">{{ info.balance }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Throughput (SMPP / HTTP)" %}</span><span class="v">{{ info.smpps_throughput }} / {{ info.http_throughput }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Created" %}</span><span class="v">{% if created %}{{ created|naturaltime }}{% else %}<span class="text-muted">{% trans "unknown" %}</span>{% endif %}</span></div>
+                <div class="info-row"><span class="k">{% trans "Last activity" %}</span><span class="v">{% if last_activity %}{{ last_activity|naturaltime }}{% else %}<span class="text-muted">{% trans "no messages" %}</span>{% endif %}</span></div>
+                {% else %}
+                <div class="text-muted">{% trans "No account details available." %}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "Message volume" %}</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead><tr>
+                            <th>{% trans "Period" %}</th>
+                            <th class="text-right">{% trans "Submitted" %}</th>
+                            <th class="text-right">{% trans "Delivered" %}</th>
+                            <th class="text-right">{% trans "Failed" %}</th>
+                            <th class="text-right">{% trans "Pending" %}</th>
+                            <th class="text-right">{% trans "Delivery %" %}</th>
+                        </tr></thead>
+                        <tbody style="font-variant-numeric:tabular-nums;">
+                            <tr><td>{% trans "Today" %}</td><td class="text-right">{{ stats.today.total|default:0|intcomma }}</td><td class="text-right">{{ stats.today.delivered|default:0|intcomma }}</td><td class="text-right">{{ stats.today.failed|default:0|intcomma }}</td><td class="text-right">{{ stats.today.pending|default:0|intcomma }}</td><td class="text-right">{{ stats.today.delivery_rate }}%</td></tr>
+                            <tr><td>{% trans "This month" %}</td><td class="text-right">{{ stats.month.total|default:0|intcomma }}</td><td class="text-right">{{ stats.month.delivered|default:0|intcomma }}</td><td class="text-right">{{ stats.month.failed|default:0|intcomma }}</td><td class="text-right">{{ stats.month.pending|default:0|intcomma }}</td><td class="text-right">{{ stats.month.delivery_rate }}%</td></tr>
+                            <tr><td>{% trans "All time" %}</td><td class="text-right">{{ stats.all.total|default:0|intcomma }}</td><td class="text-right">{{ stats.all.delivered|default:0|intcomma }}</td><td class="text-right">{{ stats.all.failed|default:0|intcomma }}</td><td class="text-right">{{ stats.all.pending|default:0|intcomma }}</td><td class="text-right">{{ stats.all.delivery_rate }}%</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header"><h6 class="m-0">{% trans "Assigned routes" %}{% if connectors %} <small class="text-muted">· {% trans "connectors" %}: {{ connectors|join:", " }}</small>{% endif %}</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>{% trans "Route" %}</th><th>{% trans "Connector" %}</th><th class="text-right">{% trans "Buy" %}</th><th class="text-right">{% trans "Sell" %}</th><th class="text-right">{% trans "Margin" %}</th><th>{% trans "Status" %}</th></tr></thead>
+                        <tbody style="font-variant-numeric:tabular-nums;">
+                            {% for a in assignments %}
+                            <tr>
+                                <td>{{ a.route_name }}</td>
+                                <td>{{ a.connector }}</td>
+                                <td class="text-right">{{ a.buy_price }} {{ a.currency }}</td>
+                                <td class="text-right">{{ a.sell_price }} {{ a.currency }}</td>
+                                <td class="text-right">{{ a.margin }}{% if a.margin_pct %} ({{ a.margin_pct }}%){% endif %}</td>
+                                <td><span class="badge {% if a.status == 'active' %}badge-success{% else %}badge-secondary{% endif %}">{{ a.status_display }}</span></td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-muted p-3">{% trans "No routes assigned to this user yet." %} <a href="{% url 'web:route_assignments_view' %}">{% trans "Assign one" %}</a>.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

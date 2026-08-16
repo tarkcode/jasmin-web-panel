@@ -29,6 +29,7 @@
                         <td>${val.mt_messaging_cred.quota.sms_count}</td>
                         <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
                             <div class="btn-group btn-group-sm">
+                                <a href="${main_trans.url2profile.replace('__UID__', encodeURIComponent(val.uid))}" class="btn btn-light" title="View profile"><i class="fas fa-id-card"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('service', '${i+1}');"><i class="fas fa-play-circle"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('delete', '${i+1}');"><i class="fas fa-trash"></i></a>
