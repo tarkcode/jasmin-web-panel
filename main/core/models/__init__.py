@@ -20,4 +20,4 @@ from .fake_dlr import (
     FakeDLRRouteModel,
 )
 
-from .route_detail import RouteDetail
+from .route_detail import RouteDetail, RouteAssignment

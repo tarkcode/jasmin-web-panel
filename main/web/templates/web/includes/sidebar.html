@@ -71,6 +71,11 @@
             <i class="fas fa-fw fa-route"></i><span>{% trans 'Route Details' %}</span>
         </a>
     </li>
+    <li class="nav-item route_assignments-menu">
+        <a class="nav-link" href="{% url 'web:route_assignments_view' %}">
+            <i class="fas fa-fw fa-hand-holding-usd"></i><span>{% trans 'Route Assignments' %}</span>
+        </a>
+    </li>
 
     <li class="nav-section">{% trans "Activity" %}</li>
     <li class="nav-item send-sms-menu">

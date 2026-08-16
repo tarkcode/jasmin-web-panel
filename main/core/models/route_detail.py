@@ -53,3 +53,62 @@ class RouteDetail(TimeStampedModel):
             "status": self.status,
             "status_display": self.get_status_display(),
         }
+
+
+class RouteAssignment(TimeStampedModel):
+    """Sell side: a RouteDetail (buy) assigned to a customer (Jasmin user) at a
+    sell price. Margin = sell - buy is computed from the linked route. Bookkeeping
+    / visibility only — it does not change Jasmin's own charging."""
+
+    STATUS_CHOICES = [
+        ("active", _("Active")),
+        ("inactive", _("Inactive")),
+    ]
+
+    class Meta:
+        db_table = "tbl_route_assignments"
+        verbose_name = _("Route Assignment")
+        verbose_name_plural = _("Route Assignments")
+        ordering = ["-created"]
+        unique_together = [("route", "uid")]
+
+    route = models.ForeignKey(RouteDetail, on_delete=models.CASCADE, related_name="assignments",
+                              verbose_name=_("Route"))
+    uid = models.CharField(_("Customer (User)"), max_length=64,
+                           help_text=_("Jasmin user this route is sold to"))
+    sell_price = models.DecimalField(_("Sell Price"), max_digits=12, decimal_places=5, default=0)
+    status = models.CharField(_("Status"), max_length=12, choices=STATUS_CHOICES, default="active")
+    notes = models.CharField(_("Notes"), max_length=255, blank=True)
+
+    def __str__(self):
+        return "%s -> %s" % (self.route.name, self.uid)
+
+    @property
+    def margin(self):
+        return (self.sell_price or 0) - (self.route.buy_price or 0)
+
+    @property
+    def margin_pct(self):
+        buy = self.route.buy_price or 0
+        if buy == 0:
+            return None
+        return round((self.margin / buy) * 100, 2)
+
+    def get_dict(self):
+        pct = self.margin_pct
+        return {
+            "id": self.id,
+            "route_id": self.route_id,
+            "route_name": self.route.name,
+            "connector": self.route.smpp_connector,
+            "country": self.route.country,
+            "currency": self.route.currency,
+            "buy_price": str(self.route.buy_price),
+            "sell_price": str(self.sell_price),
+            "margin": str(self.margin),
+            "margin_pct": (str(pct) if pct is not None else None),
+            "uid": self.uid,
+            "status": self.status,
+            "status_display": self.get_status_display(),
+            "notes": self.notes,
+        }
