@@ -228,6 +228,48 @@
         }
     });
 
+    // ---- Table tools: instant search + column sort on AJAX list pages ----
+    // Applies to any page with a #collectionlist tbody (the connector/user/group/
+    // filter/route/fake-DLR/route-details/route-assignments/wallets lists), unless
+    // the page already ships its own server-side search (submit logs, campaigns).
+    $(function() {
+        var $cl = $("#collectionlist");
+        if (!$cl.length) return;
+        if ($('input[name="search"], input[name="rsearch"]').length) return;
+        var $table = $cl.closest("table");
+        var $card = $table.closest(".card");
+        if (!$card.length || $("#tabletools_search").length) return;
+
+        $('<div class="mb-2" style="max-width:320px;">' +
+          '<div class="input-group input-group-sm">' +
+          '<div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search"></i></span></div>' +
+          '<input type="text" id="tabletools_search" class="form-control" placeholder="Search this page…" autocomplete="off">' +
+          '</div></div>').insertBefore($card);
+
+        $(document).on("input", "#tabletools_search", function() {
+            var q = $(this).val().toLowerCase();
+            $("#collectionlist tr").each(function() {
+                $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+            });
+        });
+
+        $table.find("thead th").css("cursor", "pointer").attr("title", "Click to sort").on("click", function() {
+            var idx = $(this).index();
+            var dir = $(this).data("sortdir") === "asc" ? -1 : 1;
+            $table.find("thead th").removeData("sortdir");
+            $(this).data("sortdir", dir === 1 ? "asc" : "desc");
+            var rows = $("#collectionlist tr").get();
+            rows.sort(function(a, b) {
+                var av = $(a).children().eq(idx).text().trim(), bv = $(b).children().eq(idx).text().trim();
+                var an = parseFloat(av.replace(/[^0-9.\-]/g, "")), bn = parseFloat(bv.replace(/[^0-9.\-]/g, ""));
+                if (!isNaN(an) && !isNaN(bn) && av.replace(/[0-9.,\-\s%]/g, "") === "") return (an - bn) * dir;
+                return av.localeCompare(bv) * dir;
+            });
+            var tbody = $("#collectionlist");
+            $.each(rows, function(_, r) { tbody.append(r); });
+        });
+    });
+
     // Form validation (if jQuery validate is available)
     if ($.fn.validate) {
         $("form").validate({
