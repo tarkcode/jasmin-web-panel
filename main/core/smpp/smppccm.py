@@ -49,6 +49,21 @@ class SMPPCCM(TelnetConnection):
             return []
         return split_cols(result[2:-2])
 
+    def get_stats(self, cid):
+        """Parse `stats --smppc <cid>` into a key/value dict (bound_at, counts, ...)."""
+        self.telnet.sendline('stats --smppc ' + cid)
+        self.telnet.expect([r'(.+)\n' + STANDARD_PROMPT])
+        lines = str(self.telnet.match.group(0)).strip().replace("\\r", '').split("\\n")
+        stats = {}
+        for raw in lines:
+            line = raw.strip().lstrip("#").strip()
+            if not line or line.startswith("Item") or line.startswith("Unknown") or line.startswith("stats "):
+                continue
+            parts = line.split(None, 1)
+            if len(parts) == 2:
+                stats[parts[0]] = parts[1].strip()
+        return stats
+
     def simple_smppccm_action(self, action, cid):
         self.telnet.sendline('smppccm -%s %s' % (action, cid))
         matched_index = self.telnet.expect([

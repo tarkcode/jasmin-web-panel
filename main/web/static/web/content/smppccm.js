@@ -48,6 +48,7 @@
                         <td class="text-center"><i class="fas fa-circle fa-lg ${dotClass}" title="${dotTitle}"></i></td>
                         <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
                             <div class="btn-group btn-group-sm">
+                                <a href="${main_trans.url2detail.replace('__CID__', encodeURIComponent(val.cid))}" class="btn btn-light" title="Connection details"><i class="fas fa-chart-bar"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('service', '${i+1}');"><i class="fas fa-play-circle"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" title="View logs / status reason" onclick="return collection_manage('logs', '${i+1}');"><i class="fas fa-file-alt"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>

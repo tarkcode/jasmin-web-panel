@@ -1,0 +1,98 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{{ cid }} · {% trans "Connection" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Connection details" %}{% endblock page_title %}
+{% block content %}
+<style>
+.info-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(128,128,128,.12); font-size:14px; }
+.info-row:last-child { border-bottom:0; }
+.info-row .k { color:var(--jp-text-muted,#6b7280); }
+.info-row .v { font-weight:600; font-variant-numeric:tabular-nums; }
+.stat-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
+@media(max-width:991px){ .stat-cards{ grid-template-columns:repeat(2,1fr);} }
+.stat-cards .sc { border:1px solid var(--jp-border,#e5e7eb); border-radius:12px; padding:14px 16px; background:var(--jp-surface,#fff); }
+.stat-cards .sc .n { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+.stat-cards .sc .l { font-size:12px; color:var(--jp-text-muted,#6b7280); text-transform:uppercase; letter-spacing:.04em; }
+</style>
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{{ cid }}
+            {% if is_bound %}<span class="badge badge-success align-middle">{% trans "Bound" %}</span>
+            {% elif connector.status == 'started' %}<span class="badge badge-warning align-middle">{% trans "Not bound" %}</span>
+            {% else %}<span class="badge badge-secondary align-middle">{% trans "Stopped" %}</span>{% endif %}
+        </h1>
+        <div class="ph-sub">{% trans "SMPP connection — configuration, live bind status and traffic." %}</div>
+    </div>
+    <div class="ph-actions">
+        <a class="btn btn-light btn-sm" href="{% url 'web:smppccm_view' %}"><i class="fas fa-arrow-left mr-1"></i> {% trans "Back" %}</a>
+    </div>
+</div>
+
+{% if not_found %}
+<div class="alert alert-warning">{% trans "This connector was not found." %} ({{ cid }})</div>
+{% endif %}
+
+{% if reason %}
+<div class="alert {% if is_bound %}alert-success{% else %}alert-warning{% endif %}"><i class="fas fa-info-circle mr-1"></i>{{ reason }}</div>
+{% endif %}
+
+<div class="stat-cards">
+    <div class="sc"><div class="n">{{ submit_count }}</div><div class="l">{% trans "Submits (session)" %}</div></div>
+    <div class="sc"><div class="n">{{ deliver_count }}</div><div class="l">{% trans "Delivers (session)" %}</div></div>
+    <div class="sc"><div class="n text-warning">{{ throttling_errors }}</div><div class="l">{% trans "Throttling errors" %}</div></div>
+    <div class="sc"><div class="n text-danger">{{ other_errors }}</div><div class="l">{% trans "Other errors" %}</div></div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "Configuration" %}</h6></div>
+            <div class="card-body">
+                <div class="info-row"><span class="k">{% trans "Provider / CID" %}</span><span class="v">{{ cid }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Host" %}</span><span class="v">{{ connector.host|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Port" %}</span><span class="v">{{ connector.port|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "System ID (username)" %}</span><span class="v">{{ connector.username|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Bind type" %}</span><span class="v">{{ connector.bind|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "System type" %}</span><span class="v">{{ connector.systype|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Service" %}</span><span class="v">{{ connector.status|default:"—" }}</span></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header"><h6 class="m-0">{% trans "Bind status" %}</h6></div>
+            <div class="card-body">
+                <div class="info-row"><span class="k">{% trans "Session" %}</span><span class="v">{{ session|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Uptime (since bind)" %}</span><span class="v">{% if uptime %}{{ uptime }}{% else %}—{% endif %}</span></div>
+                <div class="info-row"><span class="k">{% trans "Last connected" %}</span><span class="v">{{ connected_at|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Last disconnected" %}</span><span class="v">{{ disconnected_at|default:"—" }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Bind count" %}</span><span class="v">{{ bound_count }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Disconnect / reconnect count" %}</span><span class="v">{{ disconnected_count }}</span></div>
+                <div class="info-row"><span class="k">{% trans "Last PDU at" %}</span><span class="v">{{ last_pdu_at|default:"—" }}</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header"><h6 class="m-0">{% trans "Traffic (from submit logs, routed via this connector)" %}</h6></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead><tr>
+                    <th>{% trans "Period" %}</th>
+                    <th class="text-right">{% trans "Total" %}</th>
+                    <th class="text-right">{% trans "Delivered" %}</th>
+                    <th class="text-right">{% trans "Failed" %}</th>
+                    <th class="text-right">{% trans "Pending" %}</th>
+                </tr></thead>
+                <tbody style="font-variant-numeric:tabular-nums;">
+                    <tr><td>{% trans "Today" %}</td><td class="text-right">{{ traffic.today.total }}</td><td class="text-right">{{ traffic.today.delivered }}</td><td class="text-right">{{ traffic.today.failed }}</td><td class="text-right">{{ traffic.today.pending }}</td></tr>
+                    <tr><td>{% trans "All time" %}</td><td class="text-right">{{ traffic.all.total }}</td><td class="text-right">{{ traffic.all.delivered }}</td><td class="text-right">{{ traffic.all.failed }}</td><td class="text-right">{{ traffic.all.pending }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock content %}

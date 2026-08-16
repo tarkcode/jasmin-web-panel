@@ -19,6 +19,7 @@ urlpatterns = [
     path('mtrouter/', views.mtrouter_view, name='mtrouter_view'),
     path('smppccm/manage/', views.smppccm_view_manage, name='smppccm_view_manage'),
     path('smppccm/', views.smppccm_view, name='smppccm_view'),
+    path('connection/<str:cid>/', views.connection_detail_view, name='connection_detail_view'),
     path('send_message/manage/', views.send_message_view_manage, name='send_message_view_manage'),
     path('send_message/', views.send_message_view, name='send_message_view'),
     path('submit_logs/export/', views.submit_logs_export, name='submit_logs_export'),

@@ -459,7 +459,7 @@
 {% endblock content %}
 {% block extrajs %}
 <script>
-var main_trans = {};
+var main_trans = { url2detail: "{% url 'web:connection_detail_view' cid='__CID__' %}" };
 </script>
 <script src="{% static 'web/content/smppccm.js' %}"></script>
 {% endblock extrajs %}
