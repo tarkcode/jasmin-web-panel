@@ -1,0 +1,119 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Wallets" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Wallets" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Wallets" %}</h1>
+        <div class="ph-sub">{% trans "Customer prepaid balances and an auditable transaction ledger. Jasmin holds the live balance; the panel records every credit, debit, refund and adjustment." %}</div>
+    </div>
+    <div class="ph-actions">
+        <button class="btn btn-light btn-sm" id="sync_sms_btn"><i class="fas fa-sync-alt mr-1"></i> {% trans "Sync SMS charges" %}</button>
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New transaction" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">#</th>
+                        <th>{% trans "User" %}</th>
+                        <th class="text-right">{% trans "Balance (Jasmin)" %}</th>
+                        <th>{% trans "Currency" %}</th>
+                        <th class="text-center">{% trans "Transactions" %}</th>
+                        <th class="text-center" style="width:220px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="collectionlist"></tbody>
+                <tbody class="isEmpty" style="display:none;">
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-wallet"></i></div>
+                                <div class="es-title">{% trans "No wallets yet" %}</div>
+                                <div class="es-body">{% trans "Use “New transaction” to credit a customer — a wallet is created automatically." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction modal -->
+<div class="modal fade" id="txn_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="txn_form" action="{% url 'web:wallet_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">{% trans "New transaction" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>{% trans "User" %}</label>
+                        <select name="uid" id="txn_uid" class="form-control user-select" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>{% trans "Type" %}</label>
+                        <select name="txn_type" id="txn_type" class="form-control">
+                            <option value="credit">{% trans "Credit (add funds)" %}</option>
+                            <option value="debit">{% trans "Debit (remove funds)" %}</option>
+                            <option value="refund">{% trans "Refund" %}</option>
+                            <option value="adjustment">{% trans "Adjustment (signed)" %}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>{% trans "Amount" %}</label>
+                        <div class="input-group">
+                            <input type="number" step="0.00001" name="amount" class="form-control" value="0" required>
+                            <div class="input-group-append"><input type="text" name="currency" class="form-control" value="USD" style="max-width:90px;" title="{% trans 'Currency' %}"></div>
+                        </div>
+                        <small class="text-muted" id="txn_hint">{% trans "Applied to the customer's Jasmin balance and recorded in the ledger." %}</small>
+                    </div>
+                    <div class="form-group">
+                        <label>{% trans "Note" %}</label>
+                        <input type="text" name="description" class="form-control" maxlength="255" placeholder="{% trans 'e.g. Bank transfer ref 12345' %}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Apply" %}</button>
+                </div>
+                <input type="hidden" name="s" value="txn">
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- History modal -->
+<div class="modal fade" id="history_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="history_title">{% trans "Transaction history" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr>
+                            <th>{% trans "When" %}</th><th>{% trans "Type" %}</th>
+                            <th class="text-right">{% trans "Amount" %}</th>
+                            <th class="text-right">{% trans "Balance after" %}</th>
+                            <th>{% trans "Note" %}</th><th>{% trans "By" %}</th>
+                        </tr></thead>
+                        <tbody id="history_body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button></div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block extrajs %}
+<script src="{% static 'web/content/wallet.js' %}"></script>
+{% endblock extrajs %}

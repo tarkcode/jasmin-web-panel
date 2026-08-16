@@ -21,3 +21,4 @@ from .fake_dlr import (
 )
 
 from .route_detail import RouteDetail, RouteAssignment
+from .wallet import Wallet, WalletTransaction

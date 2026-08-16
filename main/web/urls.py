@@ -35,6 +35,8 @@ urlpatterns = [
     path('route_details/', views.route_details_view, name='route_details_view'),
     path('route_assignments/manage/', views.route_assignments_view_manage, name='route_assignments_view_manage'),
     path('route_assignments/', views.route_assignments_view, name='route_assignments_view'),
+    path('wallets/manage/', views.wallet_view_manage, name='wallet_view_manage'),
+    path('wallets/', views.wallet_view, name='wallet_view'),
     path('manage/', views.global_manage, name='global_manage'),
     path('', views.dashboard_view, name='dashboard_view'),
 ]
