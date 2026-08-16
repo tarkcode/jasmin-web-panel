@@ -72,8 +72,9 @@
                             <label class="custom-control-label" for="usr_existing">{% trans "Use existing" %}</label>
                         </div>
                         <div id="usr_new_wrap" class="mt-2">
-                            <input type="text" name="uid" id="uid_new" class="form-control" placeholder="{% trans 'New user id, e.g. acme' %}">
-                            <small class="text-muted sync-note">{% trans "The user is created with the connector's username & password above." %}</small>
+                            <label class="small text-muted mb-1" for="uid_new">{% trans "User ID (uid)" %}</label>
+                            <input type="text" name="uid" id="uid_new" class="form-control" placeholder="{% trans 'e.g. acme (often same as the username)' %}">
+                            <div class="alert alert-secondary mt-2 mb-0 py-2 px-3" id="new_user_summary" style="font-size:13px;"></div>
                         </div>
                         <div id="usr_existing_wrap" class="mt-2" style="display:none;">
                             <select id="existing_uid" class="form-control"></select>

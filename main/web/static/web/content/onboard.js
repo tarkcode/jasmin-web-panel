@@ -17,6 +17,7 @@
             }).join('');
             $("#existing_uid").html(uopts || '<option value="">(no users yet)</option>');
             (d.users || []).forEach(function(u){ USERS[u.uid] = u; });
+            updateNewUserSummary();
         }
     });
 
@@ -36,19 +37,39 @@
         }
     }
 
+    // Live "will be created as" summary for the new-user path, so the uid,
+    // username (from the connector), password source and group are all visible.
+    function currentGid(){
+        return $('input[name=group_mode]:checked').val() === 'new'
+            ? ($("#gid_new").val() || '—') : ($("#gid_existing").val() || '—');
+    }
+    function updateNewUserSummary(){
+        var uid = $("#uid_new").val() || '—';
+        var uname = $("#conn_username").val() || '—';
+        var pw = $("#conn_password").val() ? 'same as connector' : 'not set yet';
+        $("#new_user_summary").html(
+            'Will create user <strong>' + esc(uid) + '</strong> — login username <strong>' + esc(uname) +
+            '</strong>, password <strong>' + pw + '</strong>, group <strong>' + esc(currentGid()) + '</strong>.'
+        );
+    }
+
     $('input[name=user_mode]').on('change', function(){
         if ($(this).val() === 'existing'){
             $("#usr_new_wrap").hide(); $("#usr_existing_wrap").show(); $("#group_section").hide();
             syncFromExistingUser();
         } else {
             $("#usr_existing_wrap").hide(); $("#usr_new_wrap").show(); $("#group_section").show();
+            updateNewUserSummary();
         }
     });
     $("#existing_uid").on('change', syncFromExistingUser);
+    $("#uid_new, #conn_username, #conn_password, #gid_new").on('input', updateNewUserSummary);
+    $("#gid_existing").on('change', updateNewUserSummary);
 
     $('input[name=group_mode]').on('change', function(){
         if ($(this).val() === 'new'){ $("#gid_existing").hide(); $("#gid_new").show(); }
         else { $("#gid_new").hide(); $("#gid_existing").show(); }
+        updateNewUserSummary();
     });
 
     $("#make_route").on('change', function(){ $("#rate_wrap").toggle(this.checked); });
@@ -101,5 +122,6 @@
         });
     });
 
+    updateNewUserSummary();
     $("li.nav-item.onboard-menu").addClass("active");
 })(jQuery);
