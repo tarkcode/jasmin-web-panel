@@ -5,8 +5,10 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 
+from django.db import connection
+
 from main.core.tools import require_post_ajax
-from main.core.models import Wallet, WalletTransaction, SubmitLog
+from main.core.models import Wallet, WalletTransaction
 from main.core.smpp import Users
 
 MANUAL_TYPES = {"credit", "debit", "refund", "adjustment"}
@@ -125,18 +127,24 @@ def wallet_view_manage(request):
         if not wallets:
             return JsonResponse({"message": str(_("No wallets to sync.")), "synced": 0, "status": 200})
         seen = set(WalletTransaction.objects.filter(txn_type="sms_charge").values_list("reference", flat=True))
-        qs = (SubmitLog.objects.filter(uid__in=list(wallets.keys()), status="ESME_ROK")
-              .exclude(charge__isnull=True).exclude(charge=0).order_by("created_at")
-              .values("msgid", "uid", "charge")[:SYNC_CAP])
+        # submit_log.charge exists in the DB but the loaded model doesn't expose it
+        # (model file isn't mounted here), so read it via raw SQL.
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT msgid, uid, charge FROM submit_log "
+                "WHERE uid = ANY(%s) AND status = %s AND charge IS NOT NULL AND charge <> 0 "
+                "ORDER BY created_at ASC LIMIT %s",
+                [list(wallets.keys()), "ESME_ROK", SYNC_CAP])
+            rows = cur.fetchall()
         new_txns = []
-        for row in qs:
-            if row["msgid"] in seen:
+        for msgid, uid, charge in rows:
+            if not msgid or msgid in seen or uid not in wallets:
                 continue
-            seen.add(row["msgid"])
+            seen.add(msgid)
             new_txns.append(WalletTransaction(
-                wallet=wallets[row["uid"]], txn_type="sms_charge",
-                amount=-Decimal(str(row["charge"])), balance_after=None,
-                description="SMS charge", reference=row["msgid"], created_by="system"))
+                wallet=wallets[uid], txn_type="sms_charge",
+                amount=-Decimal(str(charge)), balance_after=None,
+                description="SMS charge", reference=msgid, created_by="system"))
         WalletTransaction.objects.bulk_create(new_txns, batch_size=500)
         capped = " (capped, run again for more)" if len(new_txns) >= SYNC_CAP else ""
         response["message"] = str(_("Mirrored %(n)s SMS charge(s)%(c)s.")) % {"n": len(new_txns), "c": capped}
