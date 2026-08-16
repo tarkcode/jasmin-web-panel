@@ -66,6 +66,11 @@
             <i class="fas fa-fw fa-arrow-down"></i><span>{% trans 'MO Routes' %}</span>
         </a>
     </li>
+    <li class="nav-item route_details-menu">
+        <a class="nav-link" href="{% url 'web:route_details_view' %}">
+            <i class="fas fa-fw fa-route"></i><span>{% trans 'Route Details' %}</span>
+        </a>
+    </li>
 
     <li class="nav-section">{% trans "Activity" %}</li>
     <li class="nav-item send-sms-menu">

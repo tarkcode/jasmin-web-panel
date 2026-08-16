@@ -1,6 +1,7 @@
 from .fake_dlr import fake_dlr_view, fake_dlr_view_manage
 from .docs import docs_view
 from .onboard import onboard_view, onboard_view_manage
+from .route_details import route_details_view, route_details_view_manage
 from .filters import filters_view, filters_view_manage
 from .groups import groups_view, groups_view_manage
 from .httpccm import httpccm_view, httpccm_view_manage
@@ -23,6 +24,8 @@ __all__ = [
     "docs_view",
     "onboard_view",
     "onboard_view_manage",
+    "route_details_view",
+    "route_details_view_manage",
     "filters_view",
     "filters_view_manage",
     "groups_view",

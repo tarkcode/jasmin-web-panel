@@ -19,3 +19,5 @@ from .fake_dlr import (
     FakeDLRConnectorModel,
     FakeDLRRouteModel,
 )
+
+from .route_detail import RouteDetail

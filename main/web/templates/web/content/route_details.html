@@ -1,0 +1,188 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Route Details" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Route Details" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Route Details" %}</h1>
+        <div class="ph-sub">{% trans "The routes we buy — which provider / SMPP connector supplies each route, for which country, at what price and TPS." %}</div>
+    </div>
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New route" %}</button>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">#</th>
+                        <th>{% trans "Route Name" %}</th>
+                        <th>{% trans "Country" %}</th>
+                        <th>{% trans "Type" %}</th>
+                        <th>{% trans "Connector / Provider" %}</th>
+                        <th class="text-right">{% trans "Buy Price" %}</th>
+                        <th class="text-center" style="width:80px;">{% trans "TPS" %}</th>
+                        <th class="text-center" style="width:110px;">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:150px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="collectionlist"></tbody>
+                <tbody class="isEmpty" style="display:none;">
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-route"></i></div>
+                                <div class="es-title">{% trans "No routes yet" %}</div>
+                                <div class="es-body">{% trans "Add a route to record which provider supplies it and your buy price." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <form id="add_modal_form" style="display:none" action="{% url 'web:route_details_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">{% trans "New route" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Route Name" %}</label>
+                        <div class="col-sm-9"><input type="text" name="name" class="form-control" placeholder="{% trans 'e.g. Germany Premium' %}" required></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Country" %}</label>
+                        <div class="col-sm-9"><input type="text" name="country" class="form-control" placeholder="{% trans 'e.g. Germany' %}"></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Route Type" %}</label>
+                        <div class="col-sm-9">
+                            <select name="route_type" class="form-control">
+                                <option value="transactional">{% trans "Transactional" %}</option>
+                                <option value="promotional">{% trans "Promotional" %}</option>
+                                <option value="otp">{% trans "OTP" %}</option>
+                                <option value="other">{% trans "Other" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "SMPP Connector / Provider" %}</label>
+                        <div class="col-sm-9">
+                            <select name="smpp_connector" class="form-control smpp-connector-select" required></select>
+                            <small class="text-muted">{% trans "The connector that supplies this route (i.e. who we buy it from)." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Buy Price" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" step="0.00001" name="buy_price" class="form-control" value="0.0" required>
+                                <div class="input-group-append">
+                                    <input type="text" name="currency" class="form-control" value="USD" style="max-width:110px;" placeholder="{% trans 'Currency' %}" title="{% trans 'Currency' %}">
+                                </div>
+                            </div>
+                            <small class="text-muted">{% trans "What we pay the provider per message." %}</small>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "TPS" %}</label>
+                        <div class="col-sm-9"><input type="number" name="tps" class="form-control" value="0" min="0">
+                            <small class="text-muted">{% trans "Messages per second the provider allows (0 = unspecified)." %}</small></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Status" %}</label>
+                        <div class="col-sm-9">
+                            <select name="status" class="form-control">
+                                <option value="active">{% trans "Active" %}</option>
+                                <option value="testing">{% trans "Testing" %}</option>
+                                <option value="inactive">{% trans "Inactive" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Create route" %}</button>
+                </div>
+                <input type="hidden" name="s" value="add">
+            </form>
+
+            <form id="edit_modal_form" style="display:none" action="{% url 'web:route_details_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">{% trans "Edit route" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Route Name" %}</label>
+                        <div class="col-sm-9"><input type="text" name="name" class="form-control" required></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Country" %}</label>
+                        <div class="col-sm-9"><input type="text" name="country" class="form-control"></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Route Type" %}</label>
+                        <div class="col-sm-9">
+                            <select name="route_type" class="form-control">
+                                <option value="transactional">{% trans "Transactional" %}</option>
+                                <option value="promotional">{% trans "Promotional" %}</option>
+                                <option value="otp">{% trans "OTP" %}</option>
+                                <option value="other">{% trans "Other" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "SMPP Connector / Provider" %}</label>
+                        <div class="col-sm-9"><select name="smpp_connector" class="form-control smpp-connector-select" required></select></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Buy Price" %}</label>
+                        <div class="col-sm-9">
+                            <div class="input-group">
+                                <input type="number" step="0.00001" name="buy_price" class="form-control" required>
+                                <div class="input-group-append">
+                                    <input type="text" name="currency" class="form-control" style="max-width:110px;" title="{% trans 'Currency' %}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "TPS" %}</label>
+                        <div class="col-sm-9"><input type="number" name="tps" class="form-control" min="0"></div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">{% trans "Status" %}</label>
+                        <div class="col-sm-9">
+                            <select name="status" class="form-control">
+                                <option value="active">{% trans "Active" %}</option>
+                                <option value="testing">{% trans "Testing" %}</option>
+                                <option value="inactive">{% trans "Inactive" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Save changes" %}</button>
+                </div>
+                <input type="hidden" name="s" value="edit">
+                <input type="hidden" name="id" value="">
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block extrajs %}
+<script>
+var main_trans = { url2smppccm: "{% url 'web:smppccm_view_manage' %}" };
+</script>
+<script src="{% static 'web/content/route_details.js' %}"></script>
+{% endblock extrajs %}
