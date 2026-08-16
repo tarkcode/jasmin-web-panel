@@ -122,7 +122,10 @@ def smppccm_view_manage(request):
         # NOTE: get_smppccm() returns {} (not None) for an unknown cid because
         # jcli's "Unknown connector:" line still matches its generic branch, so
         # we test for a real connector by the presence of a parsed 'cid' key.
-        existing = smppccm.get_smppccm(cid, silent=True)
+        # Use a FRESH session for this check so the `smppccm` create session below
+        # stays pristine — reusing a session before create() makes create()'s
+        # telnet result parsing misfire and falsely report failure.
+        existing = SMPPCCM().get_smppccm(cid, silent=True)
         if existing and existing.get("cid"):
             return JsonResponse({
                 "message": str(_("A connector with this CID already exists.")) + f" ('{cid}')",

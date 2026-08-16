@@ -93,14 +93,18 @@ def _onboard_create(request):
         return fail("User", _("User ID is required and cannot contain spaces."))
 
     # ---- 1. SMPP connector (always new) ----
-    smpp = SMPPCCM()
-    existing_conn = smpp.get_smppccm(cid, silent=True)
-    if existing_conn and existing_conn.get("cid"):
+    # Use a FRESH SMPPCCM() session per call: SMPPCCM.create()'s telnet result
+    # parsing misfires if the session was already used (e.g. by get_smppccm),
+    # so keep sessions clean and confirm success by re-reading the connector.
+    if (SMPPCCM().get_smppccm(cid, silent=True) or {}).get("cid"):
         return fail("Connector", _("A connector with CID '%(c)s' already exists.") % {"c": cid})
+    conn_err = None
     try:
-        smpp.create(data=dict(cid=cid, host=host, port=port, username=username, password=password))
+        SMPPCCM().create(data=dict(cid=cid, host=host, port=port, username=username, password=password))
     except Exception as e:
-        return fail("Connector", _("Failed to create connector: ") + str(e))
+        conn_err = str(e)
+    if not (SMPPCCM().get_smppccm(cid, silent=True) or {}).get("cid"):
+        return fail("Connector", _("Failed to create connector.") + ((" " + conn_err) if conn_err else ""))
     ok("Connector", _("Created SMPP connector %(c)s") % {"c": cid})
 
     # ---- 2. User (existing or new) ----
