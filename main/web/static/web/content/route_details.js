@@ -4,6 +4,7 @@
     var variant_boxes = [add_modal_form, edit_modal_form];
     var ROUTES_DICT = {};
     var CONNECTORS = [];
+    var ALL_ROUTES = [];
 
     function esc(s){ return $('<div>').text(s == null ? '' : String(s)).html(); }
 
@@ -27,35 +28,61 @@
         });
     }
 
+    function populateProviderFilter(){
+        var current = $("#provider_filter").val();
+        var providers = [];
+        ALL_ROUTES.forEach(function(r){ if (r.smpp_connector && providers.indexOf(r.smpp_connector) === -1) providers.push(r.smpp_connector); });
+        providers.sort();
+        var opts = '<option value="">All providers</option>' + providers.map(function(p){
+            return '<option value="' + esc(p) + '">' + esc(p) + '</option>';
+        }).join('');
+        $("#provider_filter").html(opts).val(current);
+    }
+
+    function renderRoutes(){
+        var filter = $("#provider_filter").val() || "";
+        var rows = filter ? ALL_ROUTES.filter(function(r){ return r.smpp_connector === filter; }) : ALL_ROUTES;
+        ROUTES_DICT = {};
+        var output = $.map(rows, function(val, i){
+            ROUTES_DICT[i+1] = val;
+            return `<tr>
+                <td>${i+1}</td>
+                <td><strong>${esc(val.name)}</strong></td>
+                <td>${esc(val.country) || '<span class="text-muted">—</span>'}</td>
+                <td><span class="badge badge-light">${esc(val.route_type_display)}</span></td>
+                <td>${esc(val.smpp_connector)}</td>
+                <td class="text-right" style="font-variant-numeric:tabular-nums;">${esc(val.buy_price)} <span class="text-muted">${esc(val.currency)}</span></td>
+                <td class="text-center">${esc(val.tps)}</td>
+                <td class="text-center">${statusBadge(val)}</td>
+                <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
+                    <div class="btn-group btn-group-sm">
+                        <a href="javascript:void(0)" class="btn btn-light" title="Edit" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>
+                        <a href="javascript:void(0)" class="btn btn-light" title="Enable / disable" onclick="return collection_manage('toggle', '${i+1}');"><i class="fas fa-power-off"></i></a>
+                        <a href="javascript:void(0)" class="btn btn-light" title="Delete" onclick="return collection_manage('delete', '${i+1}');"><i class="fas fa-trash"></i></a>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        if (rows.length > 0) {
+            $("#collectionlist").html(output);
+        } else if (filter) {
+            $("#collectionlist").html('<tr><td colspan="9" class="text-muted p-3">No routes for this provider yet.</td></tr>');
+        } else {
+            $("#collectionlist").html($(".isEmpty").html());
+        }
+    }
+
     var collectionlist_check = function(){
         $.ajax({ url: local_path + 'manage/', type: "POST", dataType: "json",
             data: { csrfmiddlewaretoken: csrf, s: "list" },
             success: function(data){
-                var datalist = data["routes"] || [];
-                var output = $.map(datalist, function(val, i){
-                    ROUTES_DICT[i+1] = val;
-                    return `<tr>
-                        <td>${i+1}</td>
-                        <td><strong>${esc(val.name)}</strong></td>
-                        <td>${esc(val.country) || '<span class="text-muted">—</span>'}</td>
-                        <td><span class="badge badge-light">${esc(val.route_type_display)}</span></td>
-                        <td>${esc(val.smpp_connector)}</td>
-                        <td class="text-right" style="font-variant-numeric:tabular-nums;">${esc(val.buy_price)} <span class="text-muted">${esc(val.currency)}</span></td>
-                        <td class="text-center">${esc(val.tps)}</td>
-                        <td class="text-center">${statusBadge(val)}</td>
-                        <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
-                            <div class="btn-group btn-group-sm">
-                                <a href="javascript:void(0)" class="btn btn-light" title="Edit" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>
-                                <a href="javascript:void(0)" class="btn btn-light" title="Enable / disable" onclick="return collection_manage('toggle', '${i+1}');"><i class="fas fa-power-off"></i></a>
-                                <a href="javascript:void(0)" class="btn btn-light" title="Delete" onclick="return collection_manage('delete', '${i+1}');"><i class="fas fa-trash"></i></a>
-                            </div>
-                        </td>
-                    </tr>`;
-                });
-                $("#collectionlist").html(datalist.length > 0 ? output : $(".isEmpty").html());
+                ALL_ROUTES = data["routes"] || [];
+                populateProviderFilter();
+                renderRoutes();
             }, error: function(jqXHR){ quick_display_modal_error(jqXHR.responseText); }
         });
     };
+    $(document).on('change', '#provider_filter', renderRoutes);
     collectionlist_check();
     loadConnectors();
 

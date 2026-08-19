@@ -10,6 +10,9 @@
         <div class="ph-sub">{% trans "The routes we buy — which provider / SMPP connector supplies each route, for which country, at what price and TPS." %}</div>
     </div>
     <div class="ph-actions">
+        <select id="provider_filter" class="form-control form-control-sm" style="width:auto;display:inline-block;" title="{% trans 'Filter by provider / connector' %}">
+            <option value="">{% trans "All providers" %}</option>
+        </select>
         <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New route" %}</button>
     </div>
 </div>
