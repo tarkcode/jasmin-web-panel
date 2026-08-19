@@ -23,6 +23,7 @@
                     return '<option value="' + esc(cid) + '">' + esc(cid) + '</option>';
                 }).join('');
                 $(".smpp-connector-select").html(opts || '<option value="">(no connectors)</option>');
+                populateProviderFilter();
                 if (cb) cb();
             }
         });
@@ -30,7 +31,9 @@
 
     function populateProviderFilter(){
         var current = $("#provider_filter").val();
-        var providers = [];
+        // List ALL SMPP providers (connectors), plus any route connector that is
+        // no longer in the connector list, so every provider is selectable.
+        var providers = CONNECTORS.slice();
         ALL_ROUTES.forEach(function(r){ if (r.smpp_connector && providers.indexOf(r.smpp_connector) === -1) providers.push(r.smpp_connector); });
         providers.sort();
         var opts = '<option value="">All providers</option>' + providers.map(function(p){
