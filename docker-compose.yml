@@ -23,6 +23,9 @@ services:
       # Read-only access to Jasmin's per-connector logs so the panel can show
       # bind-failure reasons (default-<cid>.log). Same host dir Jasmin writes to.
       - ./logs:/var/log/jasmin:ro
+      # SMPP-server IP whitelist: the panel writes /app/fw/allowed_ips.txt and a
+      # host watcher (jasmin-smpp-firewall.path) applies it to the 2775 firewall.
+      - /opt/jasmin-fw:/app/fw
       - ./main/core/smpp/conn.py:/app/main/core/smpp/conn.py:ro
       - ./main/core/smpp/smppccm.py:/app/main/core/smpp/smppccm.py:ro
       - ./main/core/smpp/mtrouter.py:/app/main/core/smpp/mtrouter.py:ro

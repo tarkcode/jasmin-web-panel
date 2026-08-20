@@ -22,6 +22,11 @@
             <i class="fas fa-fw fa-plug"></i><span>{% trans 'SMPP Connectors' %}</span>
         </a>
     </li>
+    <li class="nav-item smpp_access-menu">
+        <a class="nav-link" href="{% url 'web:smpp_access_view' %}">
+            <i class="fas fa-fw fa-shield-alt"></i><span>{% trans 'SMPP Access' %}</span>
+        </a>
+    </li>
     <li class="nav-item httpccm-menu">
         <a class="nav-link" href="{% url 'web:httpccm_view' %}">
             <i class="fas fa-fw fa-globe"></i><span>{% trans 'HTTP Connectors' %}</span>

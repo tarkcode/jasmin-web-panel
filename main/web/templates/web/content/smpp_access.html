@@ -1,0 +1,80 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "SMPP Access" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "SMPP Access" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "SMPP Access (IP whitelist)" %}</h1>
+        <div class="ph-sub">{% trans "IPs allowed to connect to our SMPP server (port 2775). Add a customer's IP so they can bind IN; everyone else is blocked." %}</div>
+    </div>
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "Add IP" %}</button>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <i class="fas fa-info-circle mr-1"></i>
+    {% trans "This is for customers binding INTO our SMPP server. It does NOT affect providers we connect OUT to — for those, the provider must whitelist our server IP 161.97.156.97 on their side." %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">#</th>
+                        <th>{% trans "IP / CIDR" %}</th>
+                        <th>{% trans "Label" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="collectionlist"></tbody>
+                <tbody class="isEmpty" style="display:none;">
+                    <tr>
+                        <td colspan="4">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-shield-alt"></i></div>
+                                <div class="es-title">{% trans "No IPs whitelisted" %}</div>
+                                <div class="es-body">{% trans "The SMPP server is closed to all external IPs. Add a customer's IP to let them bind in." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="add_modal_form" action="{% url 'web:smpp_access_view_manage' %}" method="post">{% csrf_token %}
+                <div class="modal-header"><h5 class="modal-title">{% trans "Whitelist an IP" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>{% trans "IP address or CIDR" %}</label>
+                        <input type="text" name="ip" class="form-control" placeholder="{% trans 'e.g. 203.0.113.5 or 203.0.113.0/24' %}" required>
+                        <small class="text-muted">{% trans "The customer's SMPP client IP." %}</small>
+                    </div>
+                    <div class="form-group">
+                        <label>{% trans "Label (optional)" %}</label>
+                        <input type="text" name="label" class="form-control" maxlength="60" placeholder="{% trans 'e.g. VIVINEXO office' %}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Add to whitelist" %}</button>
+                </div>
+                <input type="hidden" name="s" value="add">
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block extrajs %}
+<script src="{% static 'web/content/smpp_access.js' %}"></script>
+{% endblock extrajs %}

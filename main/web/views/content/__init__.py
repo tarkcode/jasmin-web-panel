@@ -6,6 +6,7 @@ from .route_assignments import route_assignments_view, route_assignments_view_ma
 from .wallet import wallet_view, wallet_view_manage
 from .user_profile import user_profile_view
 from .connection_detail import connection_detail_view
+from .smpp_access import smpp_access_view, smpp_access_view_manage
 from .filters import filters_view, filters_view_manage
 from .groups import groups_view, groups_view_manage
 from .httpccm import httpccm_view, httpccm_view_manage
@@ -36,6 +37,8 @@ __all__ = [
     "wallet_view_manage",
     "user_profile_view",
     "connection_detail_view",
+    "smpp_access_view",
+    "smpp_access_view_manage",
     "filters_view",
     "filters_view_manage",
     "groups_view",
