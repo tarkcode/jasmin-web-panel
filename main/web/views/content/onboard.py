@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.utils.translation import gettext as _
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -6,6 +7,11 @@ from django.contrib.auth.decorators import login_required
 from main.core.smpp import Groups, Users, Filters, MTRouter, SMPPCCM
 from main.core.models import UsersModel, GroupsModel
 from main.core.tools import require_post_ajax
+
+# Public SMPP endpoint of THIS gateway — used only to build the copy-ready
+# "message for the provider" on success. Override via settings if the box moves.
+OUR_SMPP_HOST = getattr(settings, "PANEL_SMPP_PUBLIC_HOST", "161.97.156.97")
+OUR_SMPP_PORT = str(getattr(settings, "PANEL_SMPP_PUBLIC_PORT", "2775"))
 
 
 @login_required
@@ -179,7 +185,22 @@ def _onboard_create(request):
         except Exception as e:
             return fail("Route", _("Connector and user were created, but the MT route failed: ") + str(e))
 
-    return JsonResponse({"steps": steps, "message": str(_("Done — connector and user are set up!")), "status": 200})
+    # Everything the operator needs to hand to the provider, so no wrong details
+    # get sent. Covers both directions (we dial them / they bind into us).
+    handoff = {
+        "cid": cid,
+        "our_host": OUR_SMPP_HOST,
+        "our_port": OUR_SMPP_PORT,
+        "their_host": host,
+        "their_port": port,
+        "system_id": username,
+        "password": password,
+        "bind": "transceiver",
+    }
+    return JsonResponse({
+        "steps": steps, "handoff": handoff,
+        "message": str(_("Done — connector and user are set up!")), "status": 200,
+    })
 
 
 @require_post_ajax

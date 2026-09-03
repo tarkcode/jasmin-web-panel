@@ -90,6 +90,55 @@
             return '<div class="step-line">'+icon+'<strong>'+esc(s.step)+'</strong> — '+esc(s.detail)+'</div>';
         }).join('');
     }
+    // Copy-ready message for the provider, so exact IP/port/system_id/password
+    // get sent — never a mismatch. Covers both directions (we dial them / they
+    // bind into us); the operator trims the one that doesn't apply.
+    function buildHandoffText(h){
+        return [
+            "SMPP connection details — " + h.cid,
+            "",
+            "Bind type: " + h.bind,
+            "",
+            "1) If WE connect to YOUR SMSC (this connector dials out to you):",
+            "   - Please whitelist our server IP:  " + h.our_host,
+            "   - We connect to your server:       " + h.their_host + ":" + h.their_port,
+            "   - System ID (username):            " + h.system_id,
+            "   - Password:                        " + h.password,
+            "",
+            "2) Or, if YOU bind INTO our gateway instead:",
+            "   - Host / IP:  " + h.our_host,
+            "   - Port:       " + h.our_port,
+            "   - System ID:  " + h.system_id,
+            "   - Password:   " + h.password,
+            "   - Our server is IP-restricted; send us the source IP you connect from so we whitelist it.",
+            "",
+            "Please confirm which direction applies and that the account is active."
+        ].join("\n");
+    }
+    function renderHandoff(h){
+        if(!h) return "";
+        return '<div class="card border-info mt-3">'
+            + '<div class="card-header py-2 d-flex justify-content-between align-items-center">'
+            +   '<span><i class="fas fa-paper-plane mr-1"></i>Message for the provider</span>'
+            +   '<button type="button" class="btn btn-sm btn-outline-primary" id="handoff_copy"><i class="far fa-copy mr-1"></i>Copy</button>'
+            + '</div>'
+            + '<div class="card-body p-0"><pre id="handoff_text" style="white-space:pre-wrap;word-break:break-word;margin:0;padding:12px;font-size:12.5px;line-height:1.5;">'
+            + esc(buildHandoffText(h)) + '</pre></div></div>';
+    }
+    function fallbackCopy(text){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch(e){}
+        document.body.removeChild(ta);
+    }
+    $(document).on('click', '#handoff_copy', function(){
+        var text = $("#handoff_text").text();
+        var done = function(){ toastr.success('Copied — paste it to the provider.', { timeOut: 2500 }); };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+    });
     function resetBtn($btn){ $btn.prop('disabled', false).html('<i class="fas fa-plus mr-1"></i>Create'); }
 
     $("#onboard_form").on('submit', function(e){
@@ -108,7 +157,11 @@
         $("#onboard_result").html('<div class="text-muted"><i class="fas fa-spinner fa-spin mr-1"></i>Creating…</div>');
         $.ajax({ url: main_trans.url2onboard, type: "POST", data: payload, dataType: "json",
             success: function(d){
-                $("#onboard_result").html(renderSteps(d.steps) + '<div class="alert alert-success mt-2 mb-0">'+esc(d.message)+'</div>');
+                $("#onboard_result").html(
+                    renderSteps(d.steps)
+                    + '<div class="alert alert-success mt-2 mb-1">'+esc(d.message)+'</div>'
+                    + renderHandoff(d.handoff)
+                );
                 toastr.success(d.message, { closeButton: true, progressBar: true });
                 resetBtn($btn);
             },

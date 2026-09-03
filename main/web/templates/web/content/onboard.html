@@ -143,5 +143,5 @@
 <script>
 var main_trans = { url2onboard: "{% url 'web:onboard_view_manage' %}" };
 </script>
-<script src="{% static 'web/content/onboard.js' %}"></script>
+<script src="{% static 'web/content/onboard.js' %}?v={{ VERSION }}"></script>
 {% endblock extrajs %}
