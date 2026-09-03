@@ -46,6 +46,7 @@ services:
       - ./main/campaigns:/app/main/campaigns
       - ./config/urls.py:/app/config/urls.py:ro
       - ./config/settings/com.py:/app/config/settings/com.py:ro
+      - ./config/version.py:/app/config/version.py:ro
       # Fake DLR implementation files
       - ./main/core/fake_dlr.py:/app/main/core/fake_dlr.py:ro
       - ./main/core/fake_dlr_router.py:/app/main/core/fake_dlr_router.py:ro

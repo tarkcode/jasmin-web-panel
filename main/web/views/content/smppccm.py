@@ -4,6 +4,7 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from django.conf import settings
 from django.utils.translation import gettext as _
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -17,6 +18,9 @@ from main.core.exceptions import JasminSyntaxError, JasminError, UnknownError
 LOG_DIR = "/var/log/jasmin"
 # cids are alphanumeric/underscore/dash — this also blocks path traversal.
 _CID_RE = re.compile(r"^[A-Za-z0-9_\-]{1,60}$")
+# Public SMPP endpoint of THIS gateway — for the copy-ready provider handoff.
+OUR_SMPP_HOST = getattr(settings, "PANEL_SMPP_PUBLIC_HOST", "161.97.156.97")
+OUR_SMPP_PORT = str(getattr(settings, "PANEL_SMPP_PUBLIC_PORT", "2775"))
 
 
 def _tail_lines(path, n):
@@ -180,7 +184,10 @@ def _connector_logs(request):
 
 @login_required
 def smppccm_view(request):
-    return render(request, "web/content/smppccm.html")
+    return render(request, "web/content/smppccm.html", {
+        "our_smpp_host": OUR_SMPP_HOST,
+        "our_smpp_port": OUR_SMPP_PORT,
+    })
 
 
 @require_post_ajax

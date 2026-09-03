@@ -52,6 +52,7 @@
                                 <a href="${main_trans.url2detail.replace('__CID__', encodeURIComponent(val.cid))}" class="btn btn-light" title="Connection details"><i class="fas fa-chart-bar"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('service', '${i+1}');"><i class="fas fa-play-circle"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" title="View logs / status reason" onclick="return collection_manage('logs', '${i+1}');"><i class="fas fa-file-alt"></i></a>
+                                <a href="javascript:void(0)" class="btn btn-light" title="Message for provider" onclick="return collection_manage('handoff', '${i+1}');"><i class="fas fa-paper-plane"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('edit', '${i+1}');"><i class="fas fa-edit"></i></a>
                                 <a href="javascript:void(0)" class="btn btn-light" onclick="return collection_manage('delete', '${i+1}');"><i class="fas fa-trash"></i></a>
                             </div>
@@ -93,6 +94,44 @@
             }
         });
     }
+    // Copy-ready provider message for an existing connector (same format as the
+    // onboarding page). Built from the row's own cid/host/port/username/password.
+    function buildHandoffText(h){
+        return [
+            "SMPP connection details — " + h.cid,
+            "",
+            "Bind type: " + h.bind,
+            "",
+            "1) If WE connect to YOUR SMSC (this connector dials out to you):",
+            "   - Please whitelist our server IP:  " + h.our_host,
+            "   - We connect to your server:       " + h.their_host + ":" + h.their_port,
+            "   - System ID (username):            " + h.system_id,
+            "   - Password:                        " + h.password,
+            "",
+            "2) Or, if YOU bind INTO our gateway instead:",
+            "   - Host / IP:  " + h.our_host,
+            "   - Port:       " + h.our_port,
+            "   - System ID:  " + h.system_id,
+            "   - Password:   " + h.password,
+            "   - Our server is IP-restricted; send us the source IP you connect from so we whitelist it.",
+            "",
+            "Please confirm which direction applies and that the account is active."
+        ].join("\n");
+    }
+    function fallbackCopy(text){
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch(e){}
+        document.body.removeChild(ta);
+    }
+    $(document).on('click', '#handoff_copy', function(){
+        var text = $("#handoff_text").text();
+        var done = function(){ toastr.success('Copied — paste it to the provider.', { timeOut: 2500 }); };
+        if (navigator.clipboard && navigator.clipboard.writeText){
+            navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+    });
     collectionlist_check();
     window.collection_manage = function(cmd, index){
         index = index || -1;
@@ -155,6 +194,17 @@
             $("#logs_body").html('<div class="text-muted p-3">Loading…</div>');
             loadConnectorLogs();
             $("#logs_modal").modal("show");
+        } else if (cmd == "handoff") {
+            var data = SMPPCCM_DICT[index];
+            $("#handoff_modal_title").text("Message for provider — " + data.cid);
+            $("#handoff_text").text(buildHandoffText({
+                cid: data.cid,
+                our_host: main_trans.smpp_host, our_port: main_trans.smpp_port,
+                their_host: data.host, their_port: data.port,
+                system_id: data.username, password: data.password || "",
+                bind: data.bind || "transceiver"
+            }));
+            $("#handoff_modal").modal("show");
         } else if (cmd == "delete") {
             sweetAlert({
                 title: global_trans["areyousuretodelete"],

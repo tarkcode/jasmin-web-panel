@@ -472,10 +472,32 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="handoff_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="handoff_modal_title">{% trans "Message for the provider" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">{% trans "Copy and send this to the provider. Delete whichever direction doesn't apply." %}</p>
+                <pre id="handoff_text" style="white-space:pre-wrap;word-break:break-word;background:#f6f8fa;border:1px solid rgba(128,128,128,.2);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;margin:0;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
+                <button type="button" class="btn btn-primary" id="handoff_copy"><i class="far fa-copy mr-1"></i>{% trans "Copy" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}
 {% block extrajs %}
 <script>
-var main_trans = { url2detail: "{% url 'web:connection_detail_view' cid='__CID__' %}" };
+var main_trans = {
+    url2detail: "{% url 'web:connection_detail_view' cid='__CID__' %}",
+    smpp_host: "{{ our_smpp_host }}",
+    smpp_port: "{{ our_smpp_port }}"
+};
 </script>
 <script src="{% static 'web/content/smppccm.js' %}?v={{ VERSION }}"></script>
 {% endblock extrajs %}
