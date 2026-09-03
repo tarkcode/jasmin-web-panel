@@ -1,6 +1,8 @@
 import os
 import re
+import socket
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.utils.translation import gettext as _
 from django.shortcuts import render
@@ -62,6 +64,88 @@ def _summarize_reason(lines):
     return str(_("No recent connection errors found in the log."))
 
 
+def _tcp_probe(host, port, timeout=4.0):
+    """Open a bare TCP connection to a provider's SMSC. This is the ONLY thing we
+    can measure about 'their side' — whether their server answers us at all.
+    Returns (reachable, latency_ms)."""
+    try:
+        start = time.time()
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True, int((time.time() - start) * 1000)
+    except Exception:
+        return False, None
+
+
+def _last_bind_reject(lines):
+    """Scan recent log lines for the last SMPP BIND-layer rejection (not a
+    connect-level timeout — reachability is measured live by _tcp_probe). A fresh
+    successful bind supersedes any older rejection."""
+    rejects = [
+        ("ESME_RINVPASWD", _("provider rejected our password (Invalid Password)")),
+        ("ESME_RINVSYSID", _("provider rejected our username (Invalid System ID)")),
+        ("ESME_RINVSYSTYP", _("provider rejected our System Type")),
+        ("ESME_RBINDFAIL", _("provider refused the bind (account disabled, or already bound elsewhere)")),
+        ("ESME_RINVBNDSTS", _("invalid bind status (already bound elsewhere, or wrong bind type)")),
+        ("Request timed out after", _("provider did not answer our bind request")),
+    ]
+    for ln in reversed(lines):
+        low = ln.lower()
+        if "bound" in low and "requesting" not in low:
+            return None
+        for token, msg in rejects:
+            if token in ln:
+                return str(msg)
+    return None
+
+
+def _provider_status_for(conn):
+    """Compute the 'provider side' health of one connector, as seen from our
+    server: a live TCP reachability probe combined with the last bind reply."""
+    cid = conn.get("cid") or ""
+    host = conn.get("host") or ""
+    port = conn.get("port") or ""
+    reachable, latency_ms = _tcp_probe(host, port)
+    lines = _tail_lines(os.path.join(LOG_DIR, "default-%s.log" % cid), 60) if _CID_RE.match(cid) else []
+    reject = _last_bind_reject(lines) if reachable else None
+    if not reachable:
+        state = "unreachable"
+        reason = str(_("Provider server unreachable — it's down, the host/port is wrong, "
+                       "or our server IP isn't whitelisted on their side."))
+    elif reject:
+        state = "refused"
+        reason = str(_("Reachable, but %(why)s. Their server is up — the problem is the "
+                       "account/login on their side.")) % {"why": reject}
+    else:
+        state = "ok"
+        reason = str(_("Provider server reachable and accepting our connection")) + \
+            ((" (%d ms)." % latency_ms) if latency_ms is not None else ".")
+    return {"cid": cid, "state": state, "reachable": reachable,
+            "latency_ms": latency_ms, "reason": reason}
+
+
+def _provider_status(request):
+    """Probe every connector's provider endpoint concurrently and return a
+    cid -> {state, reason, ...} map for the 'Provider' status dots."""
+    try:
+        data = SMPPCCM().list()
+    except (JasminSyntaxError, JasminError, UnknownError) as e:
+        detail = getattr(e, "detail", str(e)) or str(e)
+        return JsonResponse({"message": str(_("Could not read connectors")) + f": {detail}",
+                             "status": 500}, status=500)
+    conns = [c for c in (data.get("connectors") or []) if c.get("host") and c.get("port")]
+    results = {}
+    if conns:
+        with ThreadPoolExecutor(max_workers=min(8, len(conns))) as ex:
+            futures = [ex.submit(_provider_status_for, c) for c in conns]
+            for fut in as_completed(futures):
+                try:
+                    r = fut.result()
+                    results[r["cid"]] = r
+                except Exception:
+                    pass
+    return JsonResponse({"providers": results, "status": 200})
+
+
 def _connector_logs(request):
     """Return the tail of a connector's Jasmin log plus a plain-English reason."""
     cid = (request.POST.get("cid") or "").strip()
@@ -106,6 +190,9 @@ def smppccm_view_manage(request):
     if s == "logs":
         # Reading a log file needs no telnet session — handle before opening one.
         return _connector_logs(request)
+    if s == "provider_status":
+        # Live per-provider reachability probe (their side, as seen from us).
+        return _provider_status(request)
     smppccm = SMPPCCM()
     if s == "list":
         response = smppccm.list()

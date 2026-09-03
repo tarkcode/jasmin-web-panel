@@ -14,6 +14,21 @@
     </div>
 </div>
 
+<div class="conn-legend text-muted small mb-3 d-flex flex-wrap" style="gap:22px;">
+    <div>
+        <strong>{% trans "Us" %}</strong> <span class="text-muted">({% trans "our SMPP bind" %})</span>:
+        <i class="fas fa-circle text-success ml-1"></i> {% trans "bound" %}
+        <i class="fas fa-circle text-warning ml-2"></i> {% trans "trying" %}
+        <i class="fas fa-circle text-default ml-2"></i> {% trans "stopped" %}
+    </div>
+    <div>
+        <strong>{% trans "Provider" %}</strong> <span class="text-muted">({% trans "their server, seen from us" %})</span>:
+        <i class="fas fa-circle text-success ml-1"></i> {% trans "reachable & OK" %}
+        <i class="fas fa-circle text-warning ml-2"></i> {% trans "reachable, bind refused" %}
+        <i class="fas fa-circle text-danger ml-2"></i> {% trans "unreachable" %}
+    </div>
+</div>
+
 <div class="card mb-4">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -26,14 +41,15 @@
                         <th style="width:80px;">{% trans "Port" %}</th>
                         <th>{% trans "Username" %}</th>
                         <th>{% trans "Password" %}</th>
-                        <th class="text-center" style="width:140px;">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:70px;">{% trans "Us" %}</th>
+                        <th class="text-center" style="width:90px;">{% trans "Provider" %}</th>
                         <th class="text-center" style="width:160px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             <div class="empty-state">
                                 <div class="es-icon"><i class="fas fa-plug"></i></div>
                                 <div class="es-title">{% trans "No SMPP connectors" %}</div>

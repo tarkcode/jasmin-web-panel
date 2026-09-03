@@ -46,6 +46,7 @@
                         <td>${val.username}</td>
                         <td><span class="password-masked" title="{% trans 'Password is masked for security' %}">${maskedPassword}</span></td>
                         <td class="text-center"><i class="fas fa-circle fa-lg ${dotClass}" title="${dotTitle}"></i></td>
+                        <td class="text-center" data-provider-cid="${val.cid}"><i class="fas fa-circle-notch fa-spin text-muted" title="Checking provider…"></i></td>
                         <td class="text-center" style="padding-top:4px;padding-bottom:4px;">
                             <div class="btn-group btn-group-sm">
                                 <a href="${main_trans.url2detail.replace('__CID__', encodeURIComponent(val.cid))}" class="btn btn-light" title="Connection details"><i class="fas fa-chart-bar"></i></a>
@@ -60,8 +61,37 @@
                     return html;
                 });
                 $("#collectionlist").html(datalist.length > 0 ? output : $(".isEmpty").html());
+                if (datalist.length > 0) { loadProviderStatus(); }
             }, error: function(jqXHR, textStatus, errorThrown){quick_display_modal_error(jqXHR.responseText);}
         })
+    }
+    // Second indicator: the provider's side, as seen from our server (live TCP
+    // reachability + their last bind reply). Loaded once per list refresh — no
+    // polling, since each call opens real sockets to every SMSC.
+    function providerDot(state, reason){
+        var cls;
+        if (state === "ok") { cls = "text-success"; }
+        else if (state === "refused") { cls = "text-warning"; }
+        else if (state === "unreachable") { cls = "text-danger"; }
+        else { cls = "text-muted"; }
+        return '<i class="fas fa-circle fa-lg '+cls+'" title="'+escapeHtml(reason||'')+'"></i>';
+    }
+    function loadProviderStatus(){
+        $.ajax({
+            url: local_path + 'manage/', type: "POST", dataType: "json",
+            data: { csrfmiddlewaretoken: csrfmiddlewaretoken, s: "provider_status" },
+            success: function(data){
+                var providers = data.providers || {};
+                $("[data-provider-cid]").each(function(){
+                    var p = providers[$(this).attr("data-provider-cid")];
+                    $(this).html(p ? providerDot(p.state, p.reason)
+                                   : providerDot("unknown", "Provider status unavailable"));
+                });
+            },
+            error: function(){
+                $("[data-provider-cid]").html(providerDot("unknown", "Provider probe failed"));
+            }
+        });
     }
     collectionlist_check();
     window.collection_manage = function(cmd, index){
