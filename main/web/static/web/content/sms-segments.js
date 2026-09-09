@@ -30,16 +30,23 @@
         "Ğ": "G", "ğ": "g", "ç": "c"
     };
 
-    function analyze(text) {
+    // analyze(text[, force]) — force is optional: "ucs2" or "gsm" to compute for
+    // a specific encoding (e.g. a UI that lets the user pick). Omit for real
+    // auto-detection (a single non-GSM char -> UCS-2).
+    function analyze(text, force) {
         text = text || "";
         var cps = Array.from(text);           // iterate by code point
-        var isGsm = true, nonGsm = [];
+        var naturallyGsm = true, nonGsm = [];
         for (var i = 0; i < cps.length; i++) {
             var c = cps[i];
             if (basicSet.has(c) || extSet.has(c)) continue;
-            isGsm = false;
+            naturallyGsm = false;
             if (nonGsm.indexOf(c) === -1) nonGsm.push(c);
         }
+        var isGsm;
+        if (force === "gsm" || force === "GSM-7") isGsm = true;
+        else if (force === "ucs2" || force === "UCS-2") isGsm = false;
+        else isGsm = naturallyGsm;
 
         var singleLimit, multiLimit, units;
         if (isGsm) {
@@ -72,6 +79,7 @@
         return {
             encoding: isGsm ? "GSM-7" : "UCS-2",
             isGsm: isGsm,
+            naturallyGsm: naturallyGsm, // true only if NO non-GSM chars present
             chars: cps.length,          // human-visible characters
             encodedLength: total,       // billed units (septets or code units)
             segments: segments,

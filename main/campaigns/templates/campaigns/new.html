@@ -275,6 +275,12 @@
             </div>
         </div>
 
+        <div id="camp-sms-warn" class="alert alert-warning py-2 px-3 mt-2 mb-0" style="display:none;font-size:13px;"></div>
+        <div id="camp-sms-norm-wrap" class="mt-2" style="display:none;">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="camp-sms-normalize"><i class="fas fa-magic mr-1"></i>{% trans "Convert to GSM-7" %}</button>
+            <small class="text-muted ml-2" id="camp-sms-norm-hint"></small>
+        </div>
+
         <div class="field-grid-2 mt-3">
             <div class="form-group">
                 <label>{% trans "Message Validity" %}</label>
@@ -379,6 +385,7 @@
 
 {% endblock content %}
 {% block extrajs %}
+<script src="{% static 'web/content/sms-segments.js' %}?v={{ VERSION }}"></script>
 <script>
 (function ($) {
     var csrf = document.querySelector('input[name=csrfmiddlewaretoken]').value;
@@ -478,32 +485,55 @@
     var statP = document.getElementById('stat-per');
     var statR = document.getElementById('stat-remaining');
 
-    function detectEncoding(text) {
-        for (var i = 0; i < text.length; i++) {
-            if (text.charCodeAt(i) > 127) return 'UCS2';
-        }
-        return 'GSM_7BIT';
+    var campWarn = document.getElementById('camp-sms-warn');
+    var campNormWrap = document.getElementById('camp-sms-norm-wrap');
+    var campNormHint = document.getElementById('camp-sms-norm-hint');
+
+    function fmtCampChar(c){
+        if (c === ' ') return 'space';
+        var cp = c.codePointAt(0);
+        return cp < 0x20 ? ('\\u' + cp.toString(16)) : c;
     }
 
+    // Accurate GSM-7 vs UCS-2 detection + segmentation via the shared engine.
+    // A single non-GSM char forces real UCS-2 billing; only an explicit "ucs2"
+    // choice upgrades otherwise-GSM text (forcing gsm7 can't override reality).
     function updateStats() {
         var t = ta.value || '';
-        var n = t.length;
-        var encOption = encodingSelect.value;
-        var enc;
-        if (encOption === 'gsm7') enc = 'GSM_7BIT';
-        else if (encOption === 'ucs2') enc = 'UCS2';
-        else enc = detectEncoding(t);
-        var single = enc === 'UCS2' ? 70 : 160;
-        var multi  = enc === 'UCS2' ? 67 : 153;
-        var parts = n === 0 ? 0 : (n <= single ? 1 : Math.ceil(n / multi));
-        var per = parts <= 1 ? single : multi;
-        var remaining = n === 0 ? single : (parts <= 1 ? single - n : parts * multi - n);
-        statE.textContent = enc;
-        statL.textContent = n;
-        statM.textContent = parts;
-        statP.textContent = per;
-        statR.textContent = remaining;
+        if (!window.SmsSegments) return;
+        var r = (encodingSelect.value === 'ucs2')
+            ? window.SmsSegments.analyze(t, 'ucs2')
+            : window.SmsSegments.analyze(t);
+        statE.textContent = r.isGsm ? 'GSM_7BIT' : 'UCS2';
+        statL.textContent = r.encodedLength;
+        statM.textContent = r.segments;
+        statP.textContent = r.perSegment;
+        statR.textContent = (r.segments === 0 ? r.singleLimit : r.remaining);
+        if (r.nonGsm && r.nonGsm.length) {
+            var sample = r.nonGsm.slice(0, 8).map(fmtCampChar).join('  ');
+            campWarn.style.display = '';
+            campWarn.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>' +
+                'Contains <strong>non-GSM</strong> characters, so this sends as <strong>Unicode (UCS-2)</strong> ' +
+                '(~70 chars/segment) — multiplying the segments billed for <em>every</em> recipient. ' +
+                'Characters: <code>' + sample + '</code>' + (r.nonGsm.length > 8 ? ' …' : '');
+            campNormWrap.style.display = '';
+        } else {
+            campWarn.style.display = 'none';
+            campNormWrap.style.display = 'none';
+            campNormHint.textContent = '';
+        }
     }
+
+    var campNormBtn = document.getElementById('camp-sms-normalize');
+    if (campNormBtn) campNormBtn.addEventListener('click', function(){
+        var res = window.SmsSegments.normalize(ta.value);
+        ta.value = res.text;
+        var bits = [];
+        if (res.replaced) bits.push(res.replaced + ' replaced');
+        if (res.stripped) bits.push(res.stripped + " removed (can't convert, e.g. emoji)");
+        campNormHint.textContent = bits.length ? '(' + bits.join(', ') + ')' : '(already GSM-7)';
+        updateStats();
+    });
     ta.addEventListener('input', updateStats);
     encodingSelect.addEventListener('change', updateStats);
     updateStats();
