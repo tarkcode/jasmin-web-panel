@@ -11,6 +11,13 @@
     </div>
 </div>
 
+<style>
+.sms-calc{border:1px solid rgba(128,128,128,.18);border-radius:8px;padding:10px 12px;background:rgba(128,128,128,.04);font-size:13px;}
+.sms-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-weight:600;font-size:12px;background:#e6f4ea;color:#137333;}
+.sms-badge.ucs2{background:#fef7e0;color:#996a13;}
+.sms-calc .input-group-text{font-size:12px;}
+</style>
+
 <div class="row">
     <div class="col-lg-8 col-xl-7">
         <div class="card mb-4">
@@ -61,6 +68,27 @@
                         <label for="text">{{ form.text.label }}</label>
                         <textarea class="form-control" id="text" name="text" rows="5" placeholder="{% trans 'Message body' %}">{{ form.text.value|default:'' }}</textarea>
                         <small class="text-muted">{{ form.text.help_text }}</small>
+
+                        <!-- SMS segment / encoding / cost calculator -->
+                        <div id="sms_calc" class="sms-calc mt-2">
+                            <div class="d-flex flex-wrap align-items-center" style="gap:10px 14px;">
+                                <span class="sms-badge" id="sms_enc">GSM-7</span>
+                                <span id="sms_chars"><strong>0</strong> {% trans "chars" %}</span>
+                                <span id="sms_segs"><strong>0</strong> {% trans "segments" %}</span>
+                                <span id="sms_remain" class="text-muted"></span>
+                                <span class="ml-auto"></span>
+                                <div class="input-group input-group-sm sms-rate" style="width:auto;">
+                                    <div class="input-group-prepend"><span class="input-group-text">{% trans "Rate/SMS" %}</span></div>
+                                    <input type="number" step="0.0001" min="0" id="sms_rate" class="form-control" value="0" style="width:88px;">
+                                    <div class="input-group-append"><span class="input-group-text">= <strong id="sms_cost" class="ml-1">0</strong></span></div>
+                                </div>
+                            </div>
+                            <div id="sms_warn" class="alert alert-warning mt-2 mb-0 py-2 px-3" style="display:none;font-size:13px;"></div>
+                            <div id="sms_norm_wrap" class="mt-2" style="display:none;">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="sms_normalize"><i class="fas fa-magic mr-1"></i>{% trans "Convert to GSM-7" %}</button>
+                                <small class="text-muted ml-2" id="sms_norm_hint"></small>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-end" style="gap:8px;">
@@ -89,5 +117,6 @@
 {% endblock content %}
 {% block extrajs %}
 <script>var main_trans = {};</script>
-<script src="{% static 'web/content/send_message.js' %}"></script>
+<script src="{% static 'web/content/sms-segments.js' %}?v={{ VERSION }}"></script>
+<script src="{% static 'web/content/send_message.js' %}?v={{ VERSION }}"></script>
 {% endblock extrajs %}
