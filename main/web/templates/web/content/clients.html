@@ -1,0 +1,167 @@
+{% extends "web/base.html" %}
+{% load static i18n %}
+{% block title %}{% trans "Clients" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "Clients" %}{% endblock page_title %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1 class="ph-title">{% trans "Clients" %}</h1>
+        <div class="ph-sub">{% trans "Customers who bind INTO our gateway (port 2775) to send SMS. Each client = a login + whitelisted IP + a route to a provider." %}</div>
+    </div>
+    <div class="ph-actions">
+        <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i>{% trans "New client" %}</button>
+    </div>
+</div>
+
+<div class="alert alert-info" style="font-size:13px;">
+    <i class="fas fa-info-circle mr-1"></i>
+    {% trans "A client connects TO us and sends SMS; we route their traffic OUT through a provider (e.g. AETELCO). This is the opposite of a provider — never create an SMPP Connector for a client." %}
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:44px;">#</th>
+                        <th>{% trans "Client" %}</th>
+                        <th>{% trans "Username" %}</th>
+                        <th class="text-center">{% trans "Login" %}</th>
+                        <th>{% trans "Whitelisted IP" %}</th>
+                        <th>{% trans "Routes via" %}</th>
+                        <th class="text-right">{% trans "Rate" %}</th>
+                        <th class="text-right">{% trans "Balance" %}</th>
+                        <th class="text-right">{% trans "Today" %}</th>
+                        <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody id="collectionlist"></tbody>
+                <tbody class="isEmpty" style="display:none;">
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <div class="es-icon"><i class="fas fa-user-friends"></i></div>
+                                <div class="es-title">{% trans "No clients yet" %}</div>
+                                <div class="es-body">{% trans "Add your first client — it creates their login, whitelists their IP, and routes them to a provider." %}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- New client modal -->
+<div class="modal fade" id="collection_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <form id="client_form">{% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "New client" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Client ID" %}</label>
+                            <input type="text" name="uid" class="form-control" placeholder="{% trans 'e.g. acme_corp' %}" required>
+                            <small class="text-muted">{% trans "Internal identifier (no spaces)." %}</small>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Group" %}</label>
+                            <div class="d-flex" style="gap:8px;">
+                                <select id="gid_existing" class="form-control"></select>
+                                <input type="text" id="gid_new" class="form-control" placeholder="{% trans 'new group id' %}" style="display:none;">
+                                <button type="button" class="btn btn-light" id="gid_toggle" title="{% trans 'New group' %}"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Username (their SMPP login)" %}</label>
+                            <input type="text" name="username" id="cl_username" maxlength="15" class="form-control" required>
+                            <small class="text-muted">{% trans "Max 15 characters." %}</small>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Password" %}</label>
+                            <div class="input-group">
+                                <input type="text" name="password" id="cl_password" maxlength="8" class="form-control password-input" required>
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary generate-password" type="button" title="{% trans 'Generate' %}"><i class="fas fa-key"></i></button>
+                                </div>
+                            </div>
+                            <small class="text-muted">{% trans "Max 8 characters (SMPP limit)." %}</small>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Route via provider" %}</label>
+                            <select name="provider" id="cl_provider" class="form-control" required></select>
+                            <small class="text-muted">{% trans "Which upstream connector delivers this client's SMS." %}</small>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Rate per SMS" %}</label>
+                            <input type="number" step="0.0001" min="0" name="rate" class="form-control" value="0.0">
+                            <small class="text-muted">{% trans "Your selling price charged to this client per message." %}</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>{% trans "Client source IP(s) to whitelist" %}</label>
+                        <input type="text" name="ips" class="form-control" placeholder="{% trans 'e.g. 203.0.113.5, 203.0.113.0/24' %}">
+                        <small class="text-muted">{% trans "The IP their SMPP client connects to us FROM. Without it they can't bind in. Comma or space separated." %}</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Starting balance (optional)" %}</label>
+                            <input type="text" name="balance" class="form-control" placeholder="{% trans 'blank = unlimited (ND)' %}">
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Throughput / sec (optional)" %}</label>
+                            <input type="text" name="throughput" class="form-control" placeholder="{% trans 'blank = unlimited (ND)' %}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary" id="client_submit"><i class="fas fa-plus mr-1"></i>{% trans "Create client" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Connection details (handoff) modal -->
+<div class="modal fade" id="handoff_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="handoff_modal_title">{% trans "Client connection details" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div id="handoff_steps" class="mb-2"></div>
+                <p class="text-muted small mb-2">{% trans "Send this to the client so they can bind IN and start sending." %}</p>
+                <pre id="handoff_text" style="white-space:pre-wrap;word-break:break-word;background:#f6f8fa;border:1px solid rgba(128,128,128,.2);border-radius:8px;padding:12px;font-size:12.5px;line-height:1.5;margin:0;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
+                <button type="button" class="btn btn-primary" id="handoff_copy"><i class="far fa-copy mr-1"></i>{% trans "Copy" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+{% block extrajs %}
+<script>
+var client_ctx = { host: "{{ our_smpp_host }}", port: "{{ our_smpp_port }}" };
+</script>
+<script src="{% static 'web/content/clients.js' %}?v={{ VERSION }}"></script>
+{% endblock extrajs %}

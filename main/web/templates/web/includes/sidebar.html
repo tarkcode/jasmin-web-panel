@@ -37,9 +37,10 @@
             <i class="fas fa-fw fa-flask"></i><span>{% trans 'Fake DLR' %}</span>
         </a>
     </li>
-    <li class="nav-item onboard-menu">
-        <a class="nav-link" href="{% url 'web:onboard_view' %}">
-            <i class="fas fa-fw fa-user-plus"></i><span>{% trans 'New Connector + User' %}</span>
+    <li class="nav-section">{% trans "Customers" %}</li>
+    <li class="nav-item clients-menu">
+        <a class="nav-link" href="{% url 'web:clients_view' %}">
+            <i class="fas fa-fw fa-user-friends"></i><span>{% trans 'Clients' %}</span>
         </a>
     </li>
 
