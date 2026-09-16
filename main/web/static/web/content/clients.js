@@ -44,14 +44,19 @@
                         + '<td class="text-right">'+esc(c.rate)+'</td>'
                         + '<td class="text-right">'+esc(c.balance)+'</td>'
                         + '<td class="text-right">'+esc(c.today)+'</td>'
+                        + '<td class="text-center" data-status-uid="'+esc(c.uid)+'"><i class="fas fa-circle-notch fa-spin text-muted" title="Checking…"></i></td>'
                         + '<td class="text-center"><div class="btn-group btn-group-sm">'
                         +   '<a href="javascript:void(0)" class="btn btn-light" title="Connection details" onclick="clientHandoff('+i+')"><i class="fas fa-paper-plane"></i></a>'
+                        +   '<a href="javascript:void(0)" class="btn btn-light" title="Activity / logs" onclick="clientLogs('+i+')"><i class="fas fa-file-alt"></i></a>'
+                        +   '<a href="javascript:void(0)" class="btn btn-light" title="Edit" onclick="clientEdit('+i+')"><i class="fas fa-edit"></i></a>'
+                        +   '<a href="javascript:void(0)" class="btn btn-light" title="'+(c.status==='disabled'?'Enable':'Disable')+'" onclick="clientService('+i+')"><i class="fas fa-'+(c.status==='disabled'?'play':'ban')+'"></i></a>'
                         +   '<a href="javascript:void(0)" class="btn btn-light" title="Delete client" onclick="clientDelete('+i+')"><i class="fas fa-trash"></i></a>'
                         + '</div></td>'
                         + '</tr>';
                 });
                 $('#collectionlist').html(list.length ? out.join('') : $('.isEmpty').html());
                 window.__clients = list;
+                if (list.length) loadStatus(list.map(function(c){ return c.uid; }));
             },
             error: function(jqXHR){ if(window.quick_display_modal_error) quick_display_modal_error(jqXHR.responseText); }
         });
@@ -104,6 +109,94 @@
             });
         });
     };
+
+    // ---- live bound-in status ----
+    function loadStatus(uids){
+        $.ajax({ url: local_path + 'manage/', type: 'POST', dataType: 'json',
+            data: { csrfmiddlewaretoken: csrf, s: 'status', uids: uids.join(',') },
+            success: function(d){
+                var m = d.status_map || {};
+                $('[data-status-uid]').each(function(){
+                    var st = m[$(this).attr('data-status-uid')] || {bound:false, detail:'Not bound in'};
+                    var cls = st.bound ? 'text-success' : 'text-secondary';
+                    $(this).html('<i class="fas fa-circle '+cls+'" title="'+esc(st.detail)+'"></i>');
+                });
+            },
+            error: function(){ $('[data-status-uid]').html('<i class="fas fa-circle text-muted" title="unknown"></i>'); }
+        });
+    }
+
+    // ---- activity / logs ----
+    var logsUid = null;
+    function loadLogs(){
+        if (!logsUid) return;
+        $.ajax({ url: local_path + 'manage/', type: 'POST', dataType: 'json',
+            data: { csrfmiddlewaretoken: csrf, s: 'logs', uid: logsUid },
+            success: function(d){
+                var $b = $('#logs_bound').removeClass('alert-success alert-secondary');
+                $b.addClass(d.bound ? 'alert-success' : 'alert-secondary')
+                  .html('<i class="fas fa-'+(d.bound?'check-circle':'circle')+' mr-1"></i>'+esc(d.detail || (d.bound?'Bound in':'Not bound in')));
+                var rows = (d.rows || []).map(function(r){
+                    return '<tr><td>'+esc(r.at)+'</td><td>'+esc(r.cid)+'</td><td>'+esc(r.status)+'</td><td>'+esc(r.msgid)+'</td></tr>';
+                }).join('');
+                $('#logs_rows').html(rows || '<tr><td colspan="4" class="text-muted">No messages logged for this client yet.</td></tr>');
+            }
+        });
+    }
+    window.clientLogs = function(i){
+        var c = (window.__clients || [])[i]; if (!c) return;
+        logsUid = c.uid;
+        $('#logs_title').text('Activity — ' + c.uid);
+        $('#logs_bound').removeClass('alert-success alert-secondary').addClass('alert-secondary').text('Loading…');
+        $('#logs_rows').html('<tr><td colspan="4" class="text-muted">Loading…</td></tr>');
+        loadLogs();
+        $('#logs_modal').modal('show');
+    };
+    $('#logs_refresh').on('click', loadLogs);
+
+    // ---- enable / disable ----
+    window.clientService = function(i){
+        var c = (window.__clients || [])[i]; if (!c) return;
+        var disable = (c.status !== 'disabled');
+        $.ajax({ url: local_path + 'manage/', type: 'POST',
+            data: { csrfmiddlewaretoken: csrf, s: 'service', uid: c.uid, action: disable ? 'disable' : 'enable' },
+            success: function(d){ toastr.success(d.message, {closeButton:true, progressBar:true}); loadClients(); },
+            error: function(jqXHR){ toastr.error(JSON.parse(jqXHR.responseText).message, {closeButton:true, progressBar:true}); }
+        });
+    };
+
+    // ---- edit ----
+    window.clientEdit = function(i){
+        var c = (window.__clients || [])[i]; if (!c) return;
+        loadMeta();
+        $('#edit_form')[0].reset();
+        $('#ed_uid').val(c.uid);
+        $('#edit_title').text('Edit client — ' + c.uid);
+        // populate provider dropdown once meta loads
+        setTimeout(function(){
+            var opts = '<option value="">(unchanged)</option>';
+            $('#cl_provider option').each(function(){ opts += '<option value="'+esc($(this).val())+'">'+esc($(this).text())+'</option>'; });
+            $('#ed_provider').html(opts).val('');
+        }, 250);
+        $('#edit_modal').modal('show');
+    };
+    $('#edit_form').on('submit', function(e){
+        e.preventDefault();
+        var $btn = $('#edit_submit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Saving…');
+        $.ajax({ url: local_path + 'manage/', type: 'POST', dataType: 'json',
+            data: $(this).serialize() + '&s=edit',
+            success: function(d){
+                toastr.success(d.message, {closeButton:true, progressBar:true});
+                $('#edit_modal').modal('hide'); loadClients();
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Save changes');
+            },
+            error: function(jqXHR){
+                var r={}; try{ r=JSON.parse(jqXHR.responseText); }catch(e){}
+                toastr.error(r.message || 'Failed', {closeButton:true, progressBar:true});
+                $btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i>Save changes');
+            }
+        });
+    });
 
     function stepsHtml(steps){
         return (steps || []).map(function(s){

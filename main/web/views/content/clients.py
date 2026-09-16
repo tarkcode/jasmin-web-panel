@@ -24,9 +24,36 @@ from main.web.views.content.smpp_access import _read_ips, _write_ips, _valid_ip
 
 OUR_SMPP_HOST = getattr(settings, "PANEL_SMPP_PUBLIC_HOST", "161.97.156.97")
 OUR_SMPP_PORT = str(getattr(settings, "PANEL_SMPP_PUBLIC_PORT", "2775"))
+STANDARD_PROMPT = settings.STANDARD_PROMPT
 
 _UID_RE = re.compile(r"uid=([^)\s>]+)")
 _CID_RE = re.compile(r"smppc\(([^)]+)\)")
+
+
+def _bound_status(uids):
+    """uid -> {bound, detail}: is this client currently bound to our SMPP server?
+    Read from `stats --user <uid>` bound_connections_count."""
+    out = {u: {"bound": False, "detail": "Not bound in"} for u in uids}
+    if not uids:
+        return out
+    try:
+        tn = Users().telnet  # authenticated jcli session
+        for uid in uids:
+            try:
+                tn.sendline("stats --user %s" % uid)
+                tn.expect([r"(.+)\n" + STANDARD_PROMPT])
+                raw = tn.match.group(0)
+                s = raw.decode(errors="replace") if isinstance(raw, bytes) else str(raw)
+                m = re.search(r"bound_connections_count.*?(\{.*?\})", s)
+                if m and re.search(r"bind_\w+\D+[1-9]", m.group(1)):
+                    types = re.findall(r"bind_(\w+)\D+([1-9]\d*)", m.group(1))
+                    out[uid] = {"bound": True,
+                                "detail": "Bound (%s)" % ", ".join("%s×%s" % (n, t) for t, n in types)}
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return out
 
 
 def _nested(u, *keys):
@@ -78,6 +105,7 @@ def _traffic_today():
 
 def _clients_list():
     rmap, default_conn = _route_map()
+    providers = set(_providers())   # names used as outbound connectors = providers, not clients
     ip_by_label = {}
     for row in _read_ips():
         ip_by_label.setdefault((row.get("label") or "").strip(), []).append(row["ip"])
@@ -90,7 +118,7 @@ def _clients_list():
     clients = []
     for u in users:
         uid = u.get("uid")
-        if not uid:
+        if not uid or uid in providers:
             continue
         uname, pw = creds.get(uid, (u.get("username", ""), ""))
         route = rmap.get(uid)
@@ -328,15 +356,128 @@ def _clients_delete(request):
                          "status": 200})
 
 
+def _set_route(uid, provider, rate):
+    """Point this client's traffic at `provider`, replacing any existing route."""
+    fid = "uf_" + uid
+    if fid not in [f["fid"] for f in Filters().list().get("filters", [])]:
+        Filters().create(data=dict(type="userfilter", fid=fid, parameter=uid))
+    for r in MTRouter()._list():
+        if str(r.get("order", "")).isdigit() and any(
+                _UID_RE.search(f or "") and _UID_RE.search(f).group(1) == uid for f in (r.get("filters") or [])):
+            try:
+                MTRouter().destroy(order=r["order"])
+            except Exception:
+                pass
+    orders = [int(r["order"]) for r in MTRouter()._list() if str(r["order"]).isdigit()]
+    nxt = (max(orders) + 1) if orders else 1
+    MTRouter().create(data=dict(type="StaticMTRoute", order=str(nxt),
+                                rate=str(float(rate or 0)), smppconnectors=provider, filters=fid))
+
+
+def _clients_edit(request):
+    P = request.POST.get
+    uid = (P("uid") or "").strip()
+    if not uid or not Users().get_user(uid, silent=True):
+        return JsonResponse({"message": str(_("Client not found.")), "status": 400}, status=400)
+    done = []
+    updates = []
+    pw = P("password") or ""
+    if pw:
+        if len(pw) > 8:
+            return JsonResponse({"message": str(_("Password too long (max 8).")), "status": 400}, status=400)
+        updates.append(["password", pw])
+        try:
+            UsersModel.objects.filter(uid=uid).update(password=pw)
+        except Exception:
+            pass
+    bal = (P("balance") or "").strip()
+    if bal != "":
+        updates.append(["mt_messaging_cred", "quota", "balance", bal])
+    tp = (P("throughput") or "").strip()
+    if tp != "":
+        updates.append(["mt_messaging_cred", "quota", "smpps_throughput", tp])
+    if updates:
+        try:
+            Users().partial_update(updates, uid=uid)
+            done.append(_("login"))
+        except Exception as e:
+            return JsonResponse({"message": str(_("Update failed: ")) + str(e), "status": 400}, status=400)
+    provider = (P("provider") or "").strip()
+    rate = (P("rate") or "").strip()
+    if provider:
+        try:
+            _set_route(uid, provider, rate or "0")
+            done.append(_("route → %(p)s @ %(r)s") % {"p": provider, "r": rate or "0"})
+        except Exception as e:
+            return JsonResponse({"message": str(_("Route update failed: ")) + str(e), "status": 400}, status=400)
+    ips = [x.strip() for x in re.split(r"[\s,]+", P("ips") or "") if x.strip()]
+    if ips:
+        for ip in ips:
+            if not _valid_ip(ip):
+                return JsonResponse({"message": str(_("Invalid IP: ")) + ip, "status": 400}, status=400)
+        rows = _read_ips()
+        existing = {r["ip"] for r in rows}
+        for ip in ips:
+            if ip not in existing:
+                rows.append({"ip": ip, "label": uid})
+        try:
+            _write_ips(rows)
+            done.append(_("whitelist"))
+        except OSError:
+            pass
+    return JsonResponse({"message": str(_("Client %(u)s updated (%(x)s).")) % {"u": uid, "x": ", ".join(str(d) for d in done) or "no changes"},
+                         "status": 200})
+
+
+def _clients_service(request):
+    uid = (request.POST.get("uid") or "").strip()
+    action = request.POST.get("action") or ""
+    try:
+        if action == "disable":
+            Users().disable(uid)
+            msg = _("disabled")
+        else:
+            Users().enable(uid)
+            msg = _("enabled")
+    except Exception as e:
+        return JsonResponse({"message": str(e), "status": 400}, status=400)
+    return JsonResponse({"message": str(_("Client %(u)s %(m)s.")) % {"u": uid, "m": msg}, "status": 200})
+
+
+def _client_logs(request):
+    uid = (request.POST.get("uid") or "").strip()
+    st = _bound_status([uid]).get(uid, {"bound": False, "detail": ""})
+    rows = []
+    try:
+        with connection.cursor() as cur:
+            cur.execute("SELECT created_at, routed_cid, status, left(msgid,10) "
+                        "FROM submit_log WHERE uid=%s ORDER BY created_at DESC LIMIT 25", [uid])
+            for created, cid, status, mid in cur.fetchall():
+                rows.append({"at": str(created)[:19], "cid": cid, "status": status, "msgid": mid})
+    except Exception:
+        pass
+    return JsonResponse({"uid": uid, "bound": st.get("bound"), "detail": st.get("detail"),
+                         "rows": rows, "status": 200})
+
+
 @require_post_ajax
 def clients_view_manage(request):
     s = request.POST.get("s")
     if s == "list":
         return JsonResponse({"clients": _clients_list(), "status": 200})
+    if s == "status":
+        uids = [u for u in (request.POST.get("uids") or "").split(",") if u]
+        return JsonResponse({"status_map": _bound_status(uids), "status": 200})
     if s == "meta":
         return _clients_meta()
     if s == "create":
         return _clients_create(request)
+    if s == "edit":
+        return _clients_edit(request)
+    if s == "service":
+        return _clients_service(request)
+    if s == "logs":
+        return _client_logs(request)
     if s == "delete":
         return _clients_delete(request)
     return JsonResponse({"message": str(_("Sorry, Command does not matched.")), "status": 400}, status=400)

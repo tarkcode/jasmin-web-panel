@@ -34,13 +34,14 @@
                         <th class="text-right">{% trans "Rate" %}</th>
                         <th class="text-right">{% trans "Balance" %}</th>
                         <th class="text-right">{% trans "Today" %}</th>
-                        <th class="text-center" style="width:120px;">{% trans "Actions" %}</th>
+                        <th class="text-center">{% trans "Status" %}</th>
+                        <th class="text-center" style="width:170px;">{% trans "Actions" %}</th>
                     </tr>
                 </thead>
                 <tbody id="collectionlist"></tbody>
                 <tbody class="isEmpty" style="display:none;">
                     <tr>
-                        <td colspan="10">
+                        <td colspan="11">
                             <div class="empty-state">
                                 <div class="es-icon"><i class="fas fa-user-friends"></i></div>
                                 <div class="es-title">{% trans "No clients yet" %}</div>
@@ -154,6 +155,86 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
                 <button type="button" class="btn btn-primary" id="handoff_copy"><i class="far fa-copy mr-1"></i>{% trans "Copy" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit client modal -->
+<div class="modal fade" id="edit_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <form id="edit_form">{% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit_title">{% trans "Edit client" %}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="uid" id="ed_uid">
+                    <p class="text-muted small">{% trans "Leave a field blank to keep it unchanged." %}</p>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>{% trans "New password" %}</label>
+                            <div class="input-group">
+                                <input type="text" name="password" id="ed_password" maxlength="8" class="form-control password-input" placeholder="{% trans 'unchanged' %}">
+                                <div class="input-group-append">
+                                    <button class="btn btn-outline-secondary generate-password" type="button"><i class="fas fa-key"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>{% trans "Route via provider" %}</label>
+                            <select name="provider" id="ed_provider" class="form-control"><option value="">{% trans "(unchanged)" %}</option></select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label>{% trans "Rate per SMS" %}</label>
+                            <input type="number" step="0.0001" min="0" name="rate" id="ed_rate" class="form-control" placeholder="{% trans 'unchanged' %}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>{% trans "Balance" %}</label>
+                            <input type="text" name="balance" id="ed_balance" class="form-control" placeholder="{% trans 'unchanged (ND=unlimited)' %}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>{% trans "Throughput/sec" %}</label>
+                            <input type="text" name="throughput" id="ed_throughput" class="form-control" placeholder="{% trans 'unchanged' %}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>{% trans "Add source IP(s) to whitelist" %}</label>
+                        <input type="text" name="ips" id="ed_ips" class="form-control" placeholder="{% trans 'e.g. 203.0.113.5' %}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary" id="edit_submit"><i class="fas fa-save mr-1"></i>{% trans "Save changes" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Client activity / logs modal -->
+<div class="modal fade" id="logs_modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logs_title">{% trans "Client activity" %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div id="logs_bound" class="alert mb-2"></div>
+                <div class="table-responsive" style="max-height:50vh;overflow:auto;">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>{% trans "Time" %}</th><th>{% trans "Via" %}</th><th>{% trans "Status" %}</th><th>{% trans "Msg ID" %}</th></tr></thead>
+                        <tbody id="logs_rows"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light btn-sm" id="logs_refresh"><i class="fas fa-sync-alt mr-1"></i>{% trans "Refresh" %}</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Close" %}</button>
             </div>
         </div>
     </div>
