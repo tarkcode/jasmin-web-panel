@@ -1,13 +1,13 @@
 {% extends "web/base.html" %}
 {% load static i18n %}
-{% block title %}{% trans "SMPP Connectors" %} · Jasmin Panel{% endblock title %}
-{% block page_title %}{% trans "SMPP Connectors" %}{% endblock page_title %}
+{% block title %}{% trans "SMPP Providers" %} · Jasmin Panel{% endblock title %}
+{% block page_title %}{% trans "SMPP Providers" %}{% endblock page_title %}
 {% block content %}
 
 <div class="page-header">
     <div>
-        <h1 class="ph-title">{% trans "SMPP Connectors" %}</h1>
-        <div class="ph-sub">{% trans "Outbound SMPP client bindings to SMSCs. Manage credentials, throughput, retry behaviour and bind state." %}</div>
+        <h1 class="ph-title">{% trans "SMPP Providers" %}</h1>
+        <div class="ph-sub">{% trans "Upstream providers we deliver through — we dial OUT and bind to their SMSCs. (Clients that send to us live under Customers → Clients.)" %}</div>
     </div>
     <div class="ph-actions">
         <button class="btn btn-primary btn-sm" id="add_new_obj"><i class="fas fa-plus mr-1"></i> {% trans "New connector" %}</button>

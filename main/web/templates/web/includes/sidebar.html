@@ -16,15 +16,10 @@
         </a>
     </li>
 
-    <li class="nav-section">{% trans "Connectors" %}</li>
+    <li class="nav-section">{% trans "Providers" %}</li>
     <li class="nav-item smppccm-menu">
         <a class="nav-link" href="{% url 'web:smppccm_view' %}">
-            <i class="fas fa-fw fa-plug"></i><span>{% trans 'SMPP Connectors' %}</span>
-        </a>
-    </li>
-    <li class="nav-item smpp_access-menu">
-        <a class="nav-link" href="{% url 'web:smpp_access_view' %}">
-            <i class="fas fa-fw fa-shield-alt"></i><span>{% trans 'SMPP Access' %}</span>
+            <i class="fas fa-fw fa-plug"></i><span>{% trans 'SMPP Providers' %}</span>
         </a>
     </li>
     <li class="nav-item httpccm-menu">
@@ -41,6 +36,11 @@
     <li class="nav-item clients-menu">
         <a class="nav-link" href="{% url 'web:clients_view' %}">
             <i class="fas fa-fw fa-user-friends"></i><span>{% trans 'Clients' %}</span>
+        </a>
+    </li>
+    <li class="nav-item smpp_access-menu">
+        <a class="nav-link" href="{% url 'web:smpp_access_view' %}">
+            <i class="fas fa-fw fa-shield-alt"></i><span>{% trans 'Client IP Whitelist' %}</span>
         </a>
     </li>
 
