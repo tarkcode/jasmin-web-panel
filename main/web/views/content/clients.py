@@ -392,10 +392,12 @@ def _clients_edit(request):
             pass
     bal = (P("balance") or "").strip()
     if bal != "":
-        updates.append(["mt_messaging_cred", "quota", "balance", bal])
+        updates.append(["mt_messaging_cred", "quota", "balance",
+                        "None" if bal.lower() in ("nd", "none", "unlimited", "-") else bal])
     tp = (P("throughput") or "").strip()
     if tp != "":
-        updates.append(["mt_messaging_cred", "quota", "smpps_throughput", tp])
+        updates.append(["mt_messaging_cred", "quota", "smpps_throughput",
+                        "None" if tp.lower() in ("nd", "none", "unlimited", "-") else tp])
     if updates:
         try:
             Users().partial_update(updates, uid=uid)

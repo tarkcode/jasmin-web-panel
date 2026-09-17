@@ -3,11 +3,14 @@
     var local_path = window.location.pathname;
     function esc(s){ return $('<div>').text(s == null ? '' : String(s)).html(); }
 
+    function isNum(x){ return /^-?\d+(\.\d+)?$/.test(String(x)); }
+
     // ---- meta: groups + providers for the form ----
-    function loadMeta(){
+    function loadMeta(cb){
         $.ajax({ url: local_path + 'manage/', type: 'POST', dataType: 'json',
             data: { csrfmiddlewaretoken: csrf, s: 'meta' },
             success: function(d){
+                window.__meta = d;
                 var g = (d.groups || []).slice().reverse().map(function(x){
                     return '<option value="'+esc(x)+'">'+esc(x)+'</option>'; }).join('');
                 $('#gid_existing').html(g || '<option value="">(no groups — click + to add one)</option>');
@@ -15,6 +18,7 @@
                     var sel = (x === d.default_provider) ? ' selected' : '';
                     return '<option value="'+esc(x)+'"'+sel+'>'+esc(x)+'</option>'; }).join('');
                 $('#cl_provider').html(p || '<option value="">(no providers/connectors found)</option>');
+                if (cb) cb(d);
             }
         });
     }
@@ -165,19 +169,26 @@
         });
     };
 
-    // ---- edit ----
+    // ---- edit (pre-filled with current values) ----
+    function buildEdProvider(c){
+        var provs = (window.__meta && window.__meta.providers) || [];
+        if (provs.indexOf(c.provider) === -1 && c.provider && c.provider !== '—') provs = provs.concat([c.provider]);
+        $('#ed_provider').html(provs.map(function(x){
+            return '<option value="'+esc(x)+'"'+(x===c.provider?' selected':'')+'>'+esc(x)+'</option>';
+        }).join(''));
+    }
     window.clientEdit = function(i){
         var c = (window.__clients || [])[i]; if (!c) return;
-        loadMeta();
         $('#edit_form')[0].reset();
         $('#ed_uid').val(c.uid);
         $('#edit_title').text('Edit client — ' + c.uid);
-        // populate provider dropdown once meta loads
-        setTimeout(function(){
-            var opts = '<option value="">(unchanged)</option>';
-            $('#cl_provider option').each(function(){ opts += '<option value="'+esc($(this).val())+'">'+esc($(this).text())+'</option>'; });
-            $('#ed_provider').html(opts).val('');
-        }, 250);
+        $('#ed_password').val('');                                   // never prefilled
+        $('#ed_rate').val(isNum(c.rate) ? c.rate : '');
+        $('#ed_balance').val(isNum(c.balance) ? c.balance : '');     // ND -> blank
+        $('#ed_throughput').val(isNum(c.throughput) ? c.throughput : '');
+        $('#ed_ips').val('');
+        $('#ed_ips_current').text((c.ips && c.ips.length) ? ('Currently whitelisted: ' + c.ips.join(', ')) : 'No IP whitelisted yet.');
+        if (window.__meta) buildEdProvider(c); else loadMeta(function(){ buildEdProvider(c); });
         $('#edit_modal').modal('show');
     };
     $('#edit_form').on('submit', function(e){

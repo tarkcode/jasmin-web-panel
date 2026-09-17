@@ -194,7 +194,7 @@
                         </div>
                         <div class="form-group col-md-4">
                             <label>{% trans "Balance" %}</label>
-                            <input type="text" name="balance" id="ed_balance" class="form-control" placeholder="{% trans 'unchanged (ND=unlimited)' %}">
+                            <input type="text" name="balance" id="ed_balance" class="form-control" placeholder="{% trans 'number, or ND for unlimited' %}">
                         </div>
                         <div class="form-group col-md-4">
                             <label>{% trans "Throughput/sec" %}</label>
@@ -204,6 +204,7 @@
                     <div class="form-group">
                         <label>{% trans "Add source IP(s) to whitelist" %}</label>
                         <input type="text" name="ips" id="ed_ips" class="form-control" placeholder="{% trans 'e.g. 203.0.113.5' %}">
+                        <small id="ed_ips_current" class="text-muted"></small>
                     </div>
                 </div>
                 <div class="modal-footer">
