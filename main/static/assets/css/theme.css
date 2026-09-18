@@ -483,8 +483,15 @@ nav.topbar {
     color: var(--jp-text);
     background: var(--jp-surface);
     padding: 9px 12px;
+    /* Size to content+padding instead of Bootstrap's fixed height, which was
+       clipping <select> text vertically. Keeps inputs & selects consistent. */
+    height: auto;
+    line-height: 1.5;
     transition: border-color 120ms ease, box-shadow 120ms ease;
 }
+/* Native <select>: leave room for the arrow so long values aren't cramped. */
+select.form-control,
+select.custom-select { padding-right: 30px; }
 .form-control:focus {
     border-color: var(--jp-blue-600);
     box-shadow: 0 0 0 3px rgb(37 99 235 / 0.16);
