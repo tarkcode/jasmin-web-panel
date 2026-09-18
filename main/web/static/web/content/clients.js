@@ -46,7 +46,7 @@
                         + '<td style="font-size:12.5px;">'+ips+'</td>'
                         + '<td>'+via+'</td>'
                         + '<td class="text-right">'+esc(c.rate)+'</td>'
-                        + '<td class="text-right">'+esc(c.balance)+'</td>'
+                        + '<td class="text-right">'+esc(c.balance)+' <span class="text-muted" style="font-size:11px;">'+esc(c.currency||'')+'</span></td>'
                         + '<td class="text-right">'+esc(c.today)+'</td>'
                         + '<td class="text-center" data-status-uid="'+esc(c.uid)+'"><i class="fas fa-circle-notch fa-spin text-muted" title="Checking…"></i></td>'
                         + '<td class="text-center"><div class="btn-group btn-group-sm">'
@@ -239,6 +239,7 @@
             provider: $('#cl_provider').val(),
             rate: $('input[name=rate]').val(),
             ips: $('input[name=ips]').val(),
+            currency: $('select[name=currency]').val(),
             balance: $('input[name=balance]').val(),
             throughput: $('input[name=throughput]').val()
         };

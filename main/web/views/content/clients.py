@@ -19,8 +19,11 @@ from django.contrib.auth.decorators import login_required
 
 from main.core.smpp import Groups, Users, Filters, MTRouter, SMPPCCM
 from main.core.models import UsersModel, GroupsModel
+from main.core.models.wallet import Wallet
 from main.core.tools import require_post_ajax
 from main.web.views.content.smpp_access import _read_ips, _write_ips, _valid_ip
+
+CURRENCIES = ("USD", "EUR", "INR")
 
 OUR_SMPP_HOST = getattr(settings, "PANEL_SMPP_PUBLIC_HOST", "161.97.156.97")
 OUR_SMPP_PORT = str(getattr(settings, "PANEL_SMPP_PUBLIC_PORT", "2775"))
@@ -110,6 +113,7 @@ def _clients_list():
     for row in _read_ips():
         ip_by_label.setdefault((row.get("label") or "").strip(), []).append(row["ip"])
     creds = {u.uid: (u.username, u.password) for u in UsersModel.objects.all()}
+    wcur = {w.uid: w.currency for w in Wallet.objects.all()}
     traffic = _traffic_today()
     try:
         users = Users().list().get("users", [])
@@ -130,6 +134,7 @@ def _clients_list():
             "status": u.get("status", ""),
             "balance": _nested(u, "mt_messaging_cred", "quota", "balance") or "ND",
             "throughput": _nested(u, "mt_messaging_cred", "quota", "smpps_throughput") or "ND",
+            "currency": wcur.get(uid, "USD"),
             "ips": ip_by_label.get(uid, []),
             "provider": (route["connector"] if route else (default_conn or "—")),
             "via_default": route is None,
@@ -192,6 +197,9 @@ def _clients_create(request):
     ips_raw = (P("ips") or "").strip()
     balance = (P("balance") or "").strip()
     throughput = (P("throughput") or "").strip()
+    currency = (P("currency") or "USD").strip().upper()
+    if currency not in CURRENCIES:
+        currency = "USD"
 
     if not uid or " " in uid:
         return fail("Client", _("Client ID is required and cannot contain spaces."))
@@ -251,6 +259,11 @@ def _clients_create(request):
     except Exception:
         pass
     ok("Client", _("Created client login %(u)s (username %(n)s)") % {"u": uid, "n": username})
+    try:
+        Wallet.objects.update_or_create(uid=uid, defaults={"currency": currency})
+        ok("Wallet", _("Wallet currency set to %(c)s") % {"c": currency})
+    except Exception as e:
+        warn("Wallet", _("Could not set wallet currency: ") + str(e))
 
     # 3) credit / throughput (optional)
     updates = []

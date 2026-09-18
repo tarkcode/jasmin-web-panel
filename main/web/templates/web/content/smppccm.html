@@ -112,6 +112,23 @@
                             <small class="form-text text-muted">{% trans "Maximum 8 characters (SMPP protocol limit)." %}</small>
                         </div>
                     </div>
+                    <div class="form-group row">
+                        <label class="col-sm-2 col-form-label">{% trans "Bind type" %}</label>
+                        <div class="col-sm-10">
+                            <select name="bind" class="form-control">
+                                <option value="transceiver">{% trans "transceiver (TRX)" %}</option>
+                                <option value="transmitter">{% trans "transmitter (TX)" %}</option>
+                                <option value="receiver">{% trans "receiver (RX)" %}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-2 col-form-label">{% trans "TPS" %}</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="submit_throughput" class="form-control" placeholder="{% trans 'messages/sec, e.g. 50 (0 = unlimited)' %}">
+                            <small class="form-text text-muted">{% trans "Max messages/second we send to this provider." %}</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>

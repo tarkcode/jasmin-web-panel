@@ -241,14 +241,21 @@ def smppccm_view_manage(request):
                            f" (got {len(password)})",
                 "status": 400
             }, status=400)
+        create_data = dict(
+            cid=cid,
+            host=request.POST.get("host"),
+            port=request.POST.get("port"),
+            username=username,
+            password=password,
+        )
+        bind = (request.POST.get("bind") or "").strip()
+        if bind:
+            create_data["bind"] = bind
+        tps = (request.POST.get("submit_throughput") or "").strip()
+        if tps:
+            create_data["submit_throughput"] = tps
         try:
-            smppccm.create(data=dict(
-                cid=cid,
-                host=request.POST.get("host"),
-                port=request.POST.get("port"),
-                username=username,
-                password=password,
-            ))
+            smppccm.create(data=create_data)
         except (JasminSyntaxError, JasminError, UnknownError) as e:
             detail = getattr(e, 'detail', str(e)) or str(e)
             return JsonResponse({

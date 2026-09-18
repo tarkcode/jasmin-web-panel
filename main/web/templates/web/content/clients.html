@@ -120,13 +120,21 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-6">
-                            <label>{% trans "Starting balance (optional)" %}</label>
-                            <input type="text" name="balance" class="form-control" placeholder="{% trans 'blank = unlimited (ND)' %}">
+                        <div class="form-group col-md-4">
+                            <label>{% trans "Wallet currency" %}</label>
+                            <select name="currency" class="form-control">
+                                <option value="USD">$ USD</option>
+                                <option value="EUR">€ EUR</option>
+                                <option value="INR">₹ INR</option>
+                            </select>
                         </div>
-                        <div class="form-group col-md-6">
-                            <label>{% trans "Throughput / sec (optional)" %}</label>
-                            <input type="text" name="throughput" class="form-control" placeholder="{% trans 'blank = unlimited (ND)' %}">
+                        <div class="form-group col-md-4">
+                            <label>{% trans "Starting balance" %}</label>
+                            <input type="text" name="balance" class="form-control" placeholder="{% trans 'blank = unlimited' %}">
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label>{% trans "TPS limit / sec" %}</label>
+                            <input type="text" name="throughput" class="form-control" placeholder="{% trans 'blank = unlimited' %}">
                         </div>
                     </div>
                 </div>
