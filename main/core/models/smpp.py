@@ -61,6 +61,14 @@ class UsersModel(TimeStampedModel):
     password = models.CharField('Password', max_length=24)
     parameters = models.TextField('Parameters')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=u"Related User")
+    
+    # Fake DLR percentage - what % of messages should get fake delivery reports
+    # 0 = all real delivery, 20 = 20% fake DLR (not actually sent), 100 = all fake
+    fake_dlr_percentage = models.IntegerField(
+        'Fake DLR %',
+        default=0,
+        help_text='Percentage of messages to route to Fake DLR (0-100). 0=all real, 20=20% fake delivery reports, 100=all fake.'
+    )
 
     def __str__(self):
         return self.uid

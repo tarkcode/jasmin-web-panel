@@ -38,6 +38,12 @@
                         ? c.ips.map(esc).join('<br>')
                         : '<span class="text-warning" title="Not whitelisted — client cannot bind in">— none —</span>';
                     var via = esc(c.provider) + (c.via_default ? ' <span class="badge badge-light" title="Falls through to the default route">default</span>' : '');
+                    var fakeDlrBadge = '';
+                    if (c.fake_dlr_percentage > 0) {
+                        fakeDlrBadge = '<span class="badge badge-warning" title="'+esc(c.fake_dlr_percentage)+'% fake delivery reports">'+esc(c.fake_dlr_percentage)+'%</span>';
+                    } else {
+                        fakeDlrBadge = '<span class="text-muted">—</span>';
+                    }
                     return '<tr>'
                         + '<td>'+(i+1)+'</td>'
                         + '<td><strong>'+esc(c.uid)+'</strong><div class="text-muted" style="font-size:12px;">'+esc(c.gid)+'</div></td>'
@@ -47,6 +53,7 @@
                         + '<td>'+via+'</td>'
                         + '<td class="text-right">'+esc(c.rate)+'</td>'
                         + '<td class="text-right">'+esc(c.balance)+' <span class="text-muted" style="font-size:11px;">'+esc(c.currency||'')+'</span></td>'
+                        + '<td class="text-center">'+fakeDlrBadge+'</td>'
                         + '<td class="text-right">'+esc(c.today)+'</td>'
                         + '<td class="text-center" data-status-uid="'+esc(c.uid)+'"><i class="fas fa-circle-notch fa-spin text-muted" title="Checking…"></i></td>'
                         + '<td class="text-center"><div class="btn-group btn-group-sm">'
@@ -186,6 +193,7 @@
         $('#ed_rate').val(isNum(c.rate) ? c.rate : '');
         $('#ed_balance').val(isNum(c.balance) ? c.balance : '');     // ND -> blank
         $('#ed_throughput').val(isNum(c.throughput) ? c.throughput : '');
+        $('#ed_fake_dlr').val(c.fake_dlr_percentage || 0);
         $('#ed_ips').val('');
         $('#ed_ips_current').text((c.ips && c.ips.length) ? ('Currently whitelisted: ' + c.ips.join(', ')) : 'No IP whitelisted yet.');
         if (window.__meta) buildEdProvider(c); else loadMeta(function(){ buildEdProvider(c); });
@@ -241,7 +249,8 @@
             ips: $('input[name=ips]').val(),
             currency: $('select[name=currency]').val(),
             balance: $('input[name=balance]').val(),
-            throughput: $('input[name=throughput]').val()
+            throughput: $('input[name=throughput]').val(),
+            fake_dlr_percentage: $('#cl_fake_dlr').val() || '0'
         };
         var $btn = $('#client_submit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i>Working…');
         $.ajax({ url: local_path + 'manage/', type: 'POST', dataType: 'json', data: data,

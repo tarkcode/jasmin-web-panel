@@ -33,6 +33,7 @@
                         <th>{% trans "Routes via" %}</th>
                         <th class="text-right">{% trans "Rate" %}</th>
                         <th class="text-right">{% trans "Balance" %}</th>
+                        <th class="text-center">{% trans "Fake DLR" %}</th>
                         <th class="text-right">{% trans "Today" %}</th>
                         <th class="text-center">{% trans "Status" %}</th>
                         <th class="text-center" style="width:170px;">{% trans "Actions" %}</th>
@@ -120,7 +121,7 @@
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "Wallet currency" %}</label>
                             <select name="currency" class="form-control">
                                 <option value="USD">$ USD</option>
@@ -128,13 +129,18 @@
                                 <option value="INR">₹ INR</option>
                             </select>
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "Starting balance" %}</label>
                             <input type="text" name="balance" class="form-control" placeholder="{% trans 'blank = unlimited' %}">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "TPS limit / sec" %}</label>
                             <input type="text" name="throughput" class="form-control" placeholder="{% trans 'blank = unlimited' %}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>{% trans "Fake DLR %" %}</label>
+                            <input type="number" min="0" max="100" name="fake_dlr_percentage" id="cl_fake_dlr" class="form-control" value="0">
+                            <small class="text-muted">{% trans "0=real only, 20=20% fake" %}</small>
                         </div>
                     </div>
                 </div>
@@ -196,17 +202,22 @@
                         </div>
                     </div>
                     <div class="form-row">
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "Rate per SMS" %}</label>
                             <input type="number" step="0.0001" min="0" name="rate" id="ed_rate" class="form-control" placeholder="{% trans 'unchanged' %}">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "Balance" %}</label>
                             <input type="text" name="balance" id="ed_balance" class="form-control" placeholder="{% trans 'number, or ND for unlimited' %}">
                         </div>
-                        <div class="form-group col-md-4">
+                        <div class="form-group col-md-3">
                             <label>{% trans "Throughput/sec" %}</label>
                             <input type="text" name="throughput" id="ed_throughput" class="form-control" placeholder="{% trans 'unchanged' %}">
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>{% trans "Fake DLR %" %}</label>
+                            <input type="number" min="0" max="100" name="fake_dlr_percentage" id="ed_fake_dlr" class="form-control" placeholder="0-100">
+                            <small class="text-muted">{% trans "0=real only, 20=20% fake" %}</small>
                         </div>
                     </div>
                     <div class="form-group">

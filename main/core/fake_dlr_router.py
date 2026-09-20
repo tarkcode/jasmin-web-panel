@@ -30,6 +30,10 @@ class FakeDLRRouter:
         """
         Route a message to either real connector or Fake DLR connector
         
+        Priority order for fake_dlr_percentage:
+        1. Per-client fake_dlr_percentage (from UsersModel)
+        2. Route-level fake_dlr_percentage (from FakeDLRRouteModel)
+        
         Args:
             msgid: Message ID
             destination_addr: Destination phone number
@@ -44,7 +48,51 @@ class FakeDLRRouter:
         if not self.enabled:
             return self._route_to_real_connector(msgid, uid)
         
-        # Find matching route
+        # First check per-client fake_dlr_percentage
+        client_fake_dlr_pct = self._get_client_fake_dlr_percentage(uid)
+        
+        if client_fake_dlr_pct > 0:
+            # Use per-client setting - this takes priority
+            import random
+            use_fake_dlr = random.randint(1, 100) <= client_fake_dlr_pct
+            
+            if use_fake_dlr:
+                # Route to Fake DLR - get default fake connector or create inline
+                from main.core.fake_dlr import get_fake_dlr_connector, register_fake_dlr_connector
+                
+                # Try to get an existing fake connector
+                connector = get_fake_dlr_connector('default')
+                if not connector:
+                    # Register a default fake connector
+                    connector = register_fake_dlr_connector('default', {
+                        'success_rate': 100,
+                        'instant_response': True,
+                    })
+                
+                connector_id = 'fake_dlr_default'
+                routing_info = {
+                    'client_uid': uid,
+                    'fake_dlr_percentage': client_fake_dlr_pct,
+                    'routed_at': datetime.utcnow().isoformat(),
+                    'source': 'per_client_setting',
+                }
+                
+                logger.info(f"Routing message {msgid} to Fake DLR (client {uid} has {client_fake_dlr_pct}% fake)")
+                
+                return connector_id, True, routing_info
+            else:
+                # Route to real connector (per-client setting says no fake)
+                routing_info = {
+                    'client_uid': uid,
+                    'fake_dlr_percentage': client_fake_dlr_pct,
+                    'routed_at': datetime.utcnow().isoformat(),
+                    'routed_to_real': True,
+                    'source': 'per_client_setting',
+                }
+                
+                return 'default', False, routing_info
+        
+        # No per-client setting, check route-level settings
         route = self._find_matching_route(uid, source_addr, destination_addr)
         
         if not route:
@@ -62,6 +110,7 @@ class FakeDLRRouter:
                 'route_name': route.name,
                 'fake_dlr_connector': route.fake_dlr_connector.cid,
                 'routed_at': datetime.utcnow().isoformat(),
+                'source': 'route_setting',
             }
             
             # Update statistics
@@ -79,6 +128,7 @@ class FakeDLRRouter:
                 'route_name': route.name,
                 'real_connector': connector_id,
                 'routed_at': datetime.utcnow().isoformat(),
+                'source': 'route_setting',
             }
             
             # Update statistics
@@ -118,6 +168,25 @@ class FakeDLRRouter:
         except Exception as e:
             logger.error(f"Error finding matching route: {e}")
             return None
+    
+    def _get_client_fake_dlr_percentage(self, uid: str) -> int:
+        """
+        Get the fake_dlr_percentage for a specific client/user
+        
+        Args:
+            uid: User ID (client uid)
+        
+        Returns:
+            Fake DLR percentage (0-100), defaults to 0 if not found
+        """
+        try:
+            from main.core.models.smpp import UsersModel
+            user = UsersModel.objects.filter(uid=uid).first()
+            if user and hasattr(user, 'fake_dlr_percentage'):
+                return user.fake_dlr_percentage or 0
+        except Exception as e:
+            logger.error(f"Error getting client fake_dlr_percentage: {e}")
+        return 0
     
     def _route_to_real_connector(self, msgid: str, uid: str) -> Tuple[str, bool, Dict]:
         """

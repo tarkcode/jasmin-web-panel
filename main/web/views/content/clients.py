@@ -112,7 +112,7 @@ def _clients_list():
     ip_by_label = {}
     for row in _read_ips():
         ip_by_label.setdefault((row.get("label") or "").strip(), []).append(row["ip"])
-    creds = {u.uid: (u.username, u.password) for u in UsersModel.objects.all()}
+    creds = {u.uid: (u.username, u.password, u.fake_dlr_percentage) for u in UsersModel.objects.all()}
     wcur = {w.uid: w.currency for w in Wallet.objects.all()}
     traffic = _traffic_today()
     try:
@@ -124,7 +124,7 @@ def _clients_list():
         uid = u.get("uid")
         if not uid or uid in providers:
             continue
-        uname, pw = creds.get(uid, (u.get("username", ""), ""))
+        uname, pw, fake_dlr_pct = creds.get(uid, (u.get("username", ""), "", 0))
         route = rmap.get(uid)
         clients.append({
             "uid": uid,
@@ -140,6 +140,7 @@ def _clients_list():
             "via_default": route is None,
             "rate": (route["rate"] if route else "0"),
             "today": traffic.get(uid, 0),
+            "fake_dlr_percentage": fake_dlr_pct or 0,
         })
     return clients
 
@@ -244,6 +245,15 @@ def _clients_create(request):
             return fail("Group", _("Selected group '%(g)s' does not exist.") % {"g": gid})
         ok("Group", _("Using group %(g)s") % {"g": gid})
 
+    # Get fake_dlr_percentage
+    fake_dlr_percentage = 0
+    try:
+        fake_dlr_percentage = int(P("fake_dlr_percentage") or "0")
+        if fake_dlr_percentage < 0 or fake_dlr_percentage > 100:
+            return fail("Client", _("Fake DLR % must be between 0 and 100."))
+    except ValueError:
+        return fail("Client", _("Fake DLR % must be a number."))
+
     # 2) user (login)
     if Users().get_user(uid, silent=True):
         return fail("Client", _("A client with ID '%(u)s' already exists.") % {"u": uid})
@@ -255,7 +265,8 @@ def _clients_create(request):
         gm, _c = GroupsModel.objects.get_or_create(gid=gid)
         UsersModel.objects.update_or_create(
             uid=uid, defaults={"gid": gm, "username": username, "password": password,
-                               "parameters": "", "user": request.user})
+                               "parameters": "", "user": request.user,
+                               "fake_dlr_percentage": fake_dlr_percentage})
     except Exception:
         pass
     ok("Client", _("Created client login %(u)s (username %(n)s)") % {"u": uid, "n": username})
@@ -403,6 +414,19 @@ def _clients_edit(request):
             UsersModel.objects.filter(uid=uid).update(password=pw)
         except Exception:
             pass
+    
+    # Handle fake_dlr_percentage update
+    fake_dlr_pct = P("fake_dlr_percentage")
+    if fake_dlr_pct is not None and fake_dlr_pct != "":
+        try:
+            fake_dlr_val = int(fake_dlr_pct)
+            if fake_dlr_val < 0 or fake_dlr_val > 100:
+                return JsonResponse({"message": str(_("Fake DLR % must be between 0 and 100.")), "status": 400}, status=400)
+            UsersModel.objects.filter(uid=uid).update(fake_dlr_percentage=fake_dlr_val)
+            done.append(_("fake DLR %d%%") % fake_dlr_val)
+        except ValueError:
+            pass
+    
     bal = (P("balance") or "").strip()
     if bal != "":
         updates.append(["mt_messaging_cred", "quota", "balance",
