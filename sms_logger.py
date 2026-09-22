@@ -340,7 +340,10 @@ def schedule_client_fake_dlr(message_id, uid):
 
 
 def _execute_client_fake_dlr_update(message_id, status, uid):
-    """Execute the per-client fake DLR DB update (runs in reactor thread via callLater)."""
+    """Execute the per-client fake DLR DB update (runs in reactor thread via callLater).
+    
+    This also sets charge to 0 for fake DLR messages since they were not actually sent.
+    """
     conn = None
     try:
         if DB_TYPE_MYSQL:
@@ -350,13 +353,14 @@ def _execute_client_fake_dlr_update(message_id, status, uid):
             conn = get_postgres_conn()
             cursor = conn.cursor()
 
-        update_sql = f"UPDATE {DB_TABLE} SET status = %s, status_at = %s WHERE msgid = %s;"
         now = datetime.utcnow()
+        # Update status AND set charge to 0 for fake DLR (message not actually sent)
+        update_sql = f"UPDATE {DB_TABLE} SET status = %s, status_at = %s, charge = 0, rate = 0 WHERE msgid = %s;"
         cursor.execute(update_sql, (status, now, message_id))
         conn.commit()
 
         if cursor.rowcount > 0:
-            logger.info("Per-client Fake DLR applied: msgid=%s status=%s uid=%s", message_id, status, uid)
+            logger.info("Per-client Fake DLR applied: msgid=%s status=%s uid=%s (charge set to 0)", message_id, status, uid)
         else:
             logger.warning("Per-client Fake DLR: no row found for msgid=%s", message_id)
     except Exception as e:
