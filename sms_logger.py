@@ -88,10 +88,12 @@ _fake_dlr_configs = {}   # {connector_cid: {enabled, success_rate, min_delay, ma
 FAKE_DLR_RELOAD_INTERVAL = int(os.getenv("FAKE_DLR_RELOAD_INTERVAL", "60"))  # seconds
 FAKE_DLR_TABLE = "tbl_fake_dlr_connectors"
 
-# ---------- Per-client Fake DLR config cache ----------
-_client_fake_dlr_cache = {}   # {uid: fake_dlr_percentage}
-CLIENT_FAKE_DLR_TABLE = "tbl_users"
-CLIENT_FAKE_DLR_RELOAD_INTERVAL = int(os.getenv("CLIENT_FAKE_DLR_RELOAD_INTERVAL", "60"))  # seconds
+# Note: Per-client fake_dlr_percentage is now handled in Django layer (main/web/helpers.py)
+# BEFORE the message is sent to Jasmin. This ensures:
+# 1. Client gets charged (wallet deduction)
+# 2. Message NEVER goes to provider (saves provider cost)
+# 3. Client sees 100% DELIVRD status
+# The per-client fake DLR interception happens at the send_smpp()/send_http() level.
 
 # Pools (initialized at startup)
 _pg_pool = None
@@ -255,130 +257,11 @@ def _update_fake_dlr_stats(cursor, conn, cid, delivered):
         logger.debug("Failed to update fake DLR stats for cid=%s: %s", cid, e)
 
 
-# ---------- Per-client Fake DLR helpers ----------
-def load_client_fake_dlr_configs():
-    """Load per-client fake_dlr_percentage from tbl_users into memory cache."""
-    global _client_fake_dlr_cache
-    conn = None
-    try:
-        if DB_TYPE_MYSQL:
-            conn = get_mysql_conn()
-            cursor = conn.cursor(dictionary=True)
-        else:
-            conn = get_postgres_conn()
-            cursor = conn.cursor()
-
-        cursor.execute(
-            f"SELECT uid, fake_dlr_percentage FROM {CLIENT_FAKE_DLR_TABLE} WHERE fake_dlr_percentage > 0"
-        )
-
-        new_cache = {}
-        if DB_TYPE_MYSQL:
-            rows = cursor.fetchall()
-            for row in rows:
-                new_cache[row["uid"]] = row["fake_dlr_percentage"]
-        else:
-            cols = [desc[0] for desc in cursor.description]
-            for row in cursor.fetchall():
-                r = dict(zip(cols, row))
-                new_cache[r["uid"]] = r["fake_dlr_percentage"]
-
-        _client_fake_dlr_cache = new_cache
-        if new_cache:
-            logger.info("Per-client Fake DLR configs loaded: %s", new_cache)
-        else:
-            logger.debug("No per-client fake DLR configs found")
-    except Exception as e:
-        logger.warning("Failed to load per-client fake DLR configs: %s", e)
-    finally:
-        if conn:
-            try:
-                if DB_TYPE_MYSQL:
-                    conn.close()
-                else:
-                    put_postgres_conn(conn)
-            except Exception:
-                pass
-
-
-def periodic_client_fake_dlr_reload():
-    """Periodically reload per-client fake DLR configs from DB."""
-    try:
-        load_client_fake_dlr_configs()
-    except Exception as e:
-        logger.debug("Periodic per-client fake DLR reload failed: %s", e)
-    reactor.callLater(CLIENT_FAKE_DLR_RELOAD_INTERVAL, periodic_client_fake_dlr_reload)
-
-
-def schedule_client_fake_dlr(message_id, uid):
-    """
-    Check if per-client fake DLR is configured for this user.
-    If so, schedule a status update based on the percentage.
-    This is called AFTER the message is accepted (ESME_ROK).
-    """
-    fake_dlr_pct = _client_fake_dlr_cache.get(uid)
-    if not fake_dlr_pct or fake_dlr_pct <= 0:
-        return False
-
-    # Randomly decide if this message gets fake DLR
-    if random.randint(1, 100) > fake_dlr_pct:
-        return False  # This message should go through real delivery
-
-    # This message gets fake DLR - schedule it
-    # Always mark as DELIVRD for simplicity (can add success_rate later if needed)
-    fake_status = "DELIVRD"
-
-    # Use instant response (0 delay) for now, can be configured later
-    delay = 0
-
-    logger.info("Per-client Fake DLR scheduled: msgid=%s uid=%s status=%s delay=%ds (client has %d%% fake)",
-                message_id, uid, fake_status, delay, fake_dlr_pct)
-
-    # Schedule the update using Twisted's non-blocking timer
-    reactor.callLater(delay, _execute_client_fake_dlr_update, message_id, fake_status, uid)
-    return True
-
-
-def _execute_client_fake_dlr_update(message_id, status, uid):
-    """Execute the per-client fake DLR DB update (runs in reactor thread via callLater).
-    
-    This also sets charge to 0 for fake DLR messages since they were not actually sent.
-    """
-    conn = None
-    try:
-        if DB_TYPE_MYSQL:
-            conn = get_mysql_conn()
-            cursor = conn.cursor()
-        else:
-            conn = get_postgres_conn()
-            cursor = conn.cursor()
-
-        now = datetime.utcnow()
-        # Update status AND set charge to 0 for fake DLR (message not actually sent)
-        update_sql = f"UPDATE {DB_TABLE} SET status = %s, status_at = %s, charge = 0, rate = 0 WHERE msgid = %s;"
-        cursor.execute(update_sql, (status, now, message_id))
-        conn.commit()
-
-        if cursor.rowcount > 0:
-            logger.info("Per-client Fake DLR applied: msgid=%s status=%s uid=%s (charge set to 0)", message_id, status, uid)
-        else:
-            logger.warning("Per-client Fake DLR: no row found for msgid=%s", message_id)
-    except Exception as e:
-        logger.exception("Per-client Fake DLR update failed for msgid=%s: %s", message_id, e)
-        try:
-            if conn:
-                conn.rollback()
-        except Exception:
-            pass
-    finally:
-        if conn:
-            try:
-                if DB_TYPE_MYSQL:
-                    conn.close()
-                else:
-                    put_postgres_conn(conn)
-            except Exception:
-                pass
+# Note: Per-client fake_dlr_percentage is now handled in Django layer (main/web/helpers.py)
+# BEFORE the message is sent to Jasmin. This ensures the client is charged but the
+# message never goes to the provider (saving provider cost).
+# The per-client functions (load_client_fake_dlr_configs, schedule_client_fake_dlr, etc.)
+# have been removed from sms_logger.py.
 
 # ---------- DB pool helpers ----------
 def init_postgres_pool():
@@ -787,24 +670,15 @@ def gotConnection(conn, username, password):
                     db_conn.commit()
 
                 # Schedule fake DLR if configured for this connector
-                # Priority: 1) Per-client fake_dlr_percentage, 2) Connector-level fake DLR
-                if status_str == "ESME_ROK":
-                    uid = qmsg.get("uid")
-                    fake_dlr_applied = False
-                    
-                    # First check per-client fake DLR (higher priority)
-                    if uid:
-                        try:
-                            fake_dlr_applied = schedule_client_fake_dlr(message_id, uid)
-                        except Exception as e:
-                            logger.debug("Per-client Fake DLR scheduling failed: %s", e)
-                    
-                    # If no per-client fake DLR, check connector-level
-                    if not fake_dlr_applied and routed_cid:
-                        try:
-                            schedule_fake_dlr(message_id, routed_cid)
-                        except Exception as e:
-                            logger.debug("Fake DLR scheduling failed: %s", e)
+                # Note: Per-client fake_dlr_percentage is now handled in Django layer (helpers.py)
+                # BEFORE the message is sent to Jasmin. Messages with per-client fake DLR
+                # will never reach this point since they are intercepted earlier.
+                # Only connector-level fake DLR is handled here.
+                if status_str == "ESME_ROK" and routed_cid:
+                    try:
+                        schedule_fake_dlr(message_id, routed_cid)
+                    except Exception as e:
+                        logger.debug("Fake DLR scheduling failed: %s", e)
 
                 yield chan.basic_ack(delivery_tag=msg.delivery_tag)
 

@@ -7,13 +7,24 @@ message id (used for DLR correlation in campaigns) or '' if unavailable.
 Optional kwargs:
     encoding: "auto" | "gsm7" | "ucs2"  — override character set
     validity_seconds: int               — drop the message after this many seconds
+    
+Fake DLR Support:
+    If user has fake_dlr_percentage > 0, X% of messages will be intercepted
+    BEFORE sending to Jasmin. These messages will:
+    - Be recorded in submit_log with DELIVRD status
+    - Still charge the user (wallet deduction)
+    - NEVER be sent to provider (saving provider cost)
+    - Client sees 100% delivery success
 """
 import logging
+import random
 import re
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
+from datetime import datetime
 from typing import Tuple
 
 import smpplib.client
@@ -29,6 +40,189 @@ _HTTP_SUCCESS_RE = re.compile(r'Success\s+"?([^"\s]+)"?', re.IGNORECASE)
 # SMPP data_coding values
 DATA_CODING_GSM7 = 0
 DATA_CODING_UCS2 = 8
+
+# In-memory cache for user fake_dlr_percentage (refreshed periodically)
+_user_fake_dlr_cache = {}
+_user_fake_dlr_cache_time = 0
+USER_FAKE_DLR_CACHE_TTL = 60  # seconds
+
+
+def _get_user_fake_dlr_percentage(username: str) -> float:
+    """
+    Get the fake_dlr_percentage for a user by username.
+    Uses in-memory cache with TTL to avoid DB hits on every message.
+    Returns 0 if user not found or no fake_dlr_percentage set.
+    """
+    global _user_fake_dlr_cache, _user_fake_dlr_cache_time
+    
+    now = time.time()
+    if now - _user_fake_dlr_cache_time > USER_FAKE_DLR_CACHE_TTL:
+        # Refresh cache
+        try:
+            from main.core.models.smpp import UsersModel
+            users = UsersModel.objects.filter(fake_dlr_percentage__gt=0).only('username', 'fake_dlr_percentage')
+            _user_fake_dlr_cache = {u.username: u.fake_dlr_percentage for u in users}
+            _user_fake_dlr_cache_time = now
+            if _user_fake_dlr_cache:
+                logger.debug(f"Refreshed fake DLR cache: {_user_fake_dlr_cache}")
+        except Exception as e:
+            logger.error(f"Failed to refresh fake DLR cache: {e}")
+    
+    return _user_fake_dlr_cache.get(username, 0)
+
+
+def _record_fake_dlr_message(
+    msgid: str,
+    source_addr: str,
+    destination_addr: str,
+    uid: int,
+    rate: float,
+    charge: float,
+    short_message: str = "",
+) -> bool:
+    """
+    Record a fake DLR message directly in submit_log.
+    This is called when a message is intercepted for fake DLR.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        from django.db import connection
+        
+        now = datetime.utcnow()
+        
+        with connection.cursor() as cursor:
+            # Insert with DELIVRD status immediately
+            cursor.execute(
+                """
+                INSERT INTO submit_log 
+                (msgid, source_addr, destination_addr, rate, charge, status, uid, 
+                 short_message, created_at, status_at, pdu_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                [msgid, source_addr, destination_addr, rate, charge, 'DELIVRD', 
+                 uid, short_message, now, now, 1]
+            )
+        
+        logger.info(
+            f"FAKE DLR RECORDED: msgid={msgid} uid={uid} dst={destination_addr} "
+            f"rate={rate} charge={charge}"
+        )
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to record fake DLR message: {e}")
+        return False
+
+
+def _deduct_wallet_for_fake_dlr(uid: int, amount: float) -> bool:
+    """
+    Deduct the wallet balance for a fake DLR message.
+    This ensures the client is still charged even though the message
+    was never sent to the provider.
+    Returns True if successful, False otherwise.
+    """
+    try:
+        from main.core.models.wallet import WalletModel
+        
+        wallet = WalletModel.objects.filter(uid_id=uid).first()
+        if wallet:
+            wallet.balance -= amount
+            wallet.save(update_fields=['balance', 'updated_at'])
+            logger.info(f"FAKE DLR WALLET DEDUCTED: uid={uid} amount={amount} new_balance={wallet.balance}")
+            return True
+        else:
+            logger.warning(f"No wallet found for uid={uid}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Failed to deduct wallet for fake DLR: {e}")
+        return False
+
+
+def _get_user_rate_and_uid(username: str) -> Tuple[float, int]:
+    """
+    Get the rate per SMS and uid for a user by username.
+    Returns (rate, uid) tuple. Rate defaults to 0 if not found.
+    """
+    try:
+        from main.core.models.smpp import UsersModel
+        user = UsersModel.objects.filter(username=username).only('uid', 'mt_messaging_cred').first()
+        if user:
+            # Get rate from mt_messaging_cred (JSON field)
+            cred = user.mt_messaging_cred or {}
+            rate = float(cred.get('value', 0))
+            return rate, user.uid
+        return 0.0, 0
+    except Exception as e:
+        logger.error(f"Failed to get user rate: {e}")
+        return 0.0, 0
+
+
+def fake_dlr_send(
+    src_addr: str,
+    dst_addr: str,
+    text: str,
+    username: str,
+    rate: float = None,
+    uid: int = None,
+) -> Tuple[bool, str]:
+    """
+    Check if this message should be intercepted for fake DLR.
+    If yes, record it and return (True, fake_msgid).
+    If no, return (False, '').
+    
+    This is called BEFORE sending to Jasmin to intercept messages
+    that will never go to the provider.
+    """
+    # Get user's fake_dlr_percentage
+    fake_dlr_percentage = _get_user_fake_dlr_percentage(username)
+    
+    if fake_dlr_percentage <= 0:
+        return False, ''
+    
+    # Random roll: 0-99, if < percentage, intercept
+    roll = random.randint(0, 99)
+    
+    if roll >= fake_dlr_percentage:
+        # Not intercepted, proceed normally
+        return False, ''
+    
+    # FAKE DLR TRIGGERED!
+    # Generate a fake message ID
+    fake_msgid = f"FAKE-{uuid.uuid4().hex[:16].upper()}"
+    
+    # Get user's rate and uid if not provided
+    if rate is None or uid is None:
+        rate_from_db, uid_from_db = _get_user_rate_and_uid(username)
+        rate = rate if rate is not None else rate_from_db
+        uid = uid if uid is not None else uid_from_db
+    
+    # Calculate charge (rate * 1 message)
+    charge = rate
+    
+    logger.info(
+        f"FAKE DLR INTERCEPTED: username={username} uid={uid} "
+        f"percentage={fake_dlr_percentage}% roll={roll} msgid={fake_msgid} - "
+        f"Message will NOT be sent to provider!"
+    )
+    
+    # Record in submit_log with DELIVRD status
+    if uid > 0:
+        _record_fake_dlr_message(
+            msgid=fake_msgid,
+            source_addr=src_addr,
+            destination_addr=dst_addr,
+            uid=uid,
+            rate=rate,
+            charge=charge,
+            short_message=text[:500] if text else "",
+        )
+        
+        # Deduct from wallet
+        if charge > 0:
+            _deduct_wallet_for_fake_dlr(uid, charge)
+    
+    return True, fake_msgid
 
 
 def _validity_period_str(seconds: int) -> str:
@@ -55,6 +249,13 @@ def send_smpp(
     """Send SMS via SMPP. Returns (status, message, msgid)."""
     system_id = system_id or settings.SMPP_SYSTEM_ID
     password = password or settings.SMPP_PASSWORD
+
+    # Check for fake DLR interception BEFORE sending to Jasmin
+    intercepted, fake_msgid = fake_dlr_send(src_addr, dst_addr, text, system_id)
+    if intercepted:
+        # Message intercepted for fake DLR - return success without sending to Jasmin
+        logger.info(f"SMPP FAKE DLR: system_id={system_id} dst={dst_addr} msgid={fake_msgid}")
+        return 200, "OK", fake_msgid
 
     captured_msgids = []
 
@@ -142,6 +343,13 @@ def send_http(
     """Send SMS via HTTP. Returns (status, message, msgid)."""
     username = username or settings.HTTP_USERNAME
     password = password or settings.HTTP_PASSWORD
+
+    # Check for fake DLR interception BEFORE sending to Jasmin
+    intercepted, fake_msgid = fake_dlr_send(src_addr, dst_addr, text, username)
+    if intercepted:
+        # Message intercepted for fake DLR - return success without sending to Jasmin
+        logger.info(f"HTTP FAKE DLR: username={username} dst={dst_addr} msgid={fake_msgid}")
+        return 200, f"Success \"{fake_msgid}\"", fake_msgid
 
     params = {
         'username': username,
