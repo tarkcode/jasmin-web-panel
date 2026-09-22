@@ -75,7 +75,7 @@ def _record_fake_dlr_message(
     msgid: str,
     source_addr: str,
     destination_addr: str,
-    uid: int,
+    uid,  # Can be string or int
     rate: float,
     charge: float,
     short_message: str = "",
@@ -92,6 +92,7 @@ def _record_fake_dlr_message(
         
         with connection.cursor() as cursor:
             # Insert with DELIVRD status immediately
+            # Note: short_message column is bytea, needs to be encoded
             cursor.execute(
                 """
                 INSERT INTO submit_log 
@@ -100,7 +101,9 @@ def _record_fake_dlr_message(
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 [msgid, source_addr, destination_addr, rate, charge, 'DELIVRD', 
-                 uid, short_message, now, now, 1]
+                 str(uid),  # Ensure uid is string
+                 short_message.encode('utf-8') if short_message else b'', 
+                 now, now, 1]
             )
         
         logger.info(
