@@ -114,25 +114,46 @@ def _record_fake_dlr_message(
         return False
 
 
-def _deduct_wallet_for_fake_dlr(uid: int, amount: float) -> bool:
+def _deduct_wallet_for_fake_dlr(uid: int, amount: float, msgid: str) -> bool:
     """
     Deduct the wallet balance for a fake DLR message.
     This ensures the client is still charged even though the message
     was never sent to the provider.
+    
+    Uses WalletTransaction to record the charge with idempotency check.
     Returns True if successful, False otherwise.
     """
     try:
-        from main.core.models.wallet import WalletModel
+        from main.core.models.wallet import Wallet, WalletTransaction
         
-        wallet = WalletModel.objects.filter(uid_id=uid).first()
-        if wallet:
-            wallet.balance -= amount
-            wallet.save(update_fields=['balance', 'updated_at'])
-            logger.info(f"FAKE DLR WALLET DEDUCTED: uid={uid} amount={amount} new_balance={wallet.balance}")
+        # Get or create wallet for this user
+        wallet, created = Wallet.objects.get_or_create(uid=uid)
+        
+        # Check for idempotency - don't charge twice for same msgid
+        if WalletTransaction.objects.filter(reference=msgid).exists():
+            logger.warning(f"FAKE DLR: msgid={msgid} already charged, skipping duplicate deduction")
             return True
-        else:
-            logger.warning(f"No wallet found for uid={uid}")
-            return False
+        
+        # Get current balance from last transaction
+        last_txn = wallet.transactions.filter(balance_after__isnull=False).order_by('-created').first()
+        current_balance = float(last_txn.balance_after) if last_txn else 0.0
+        
+        # Calculate new balance after deduction
+        new_balance = current_balance - amount
+        
+        # Create the transaction record
+        WalletTransaction.objects.create(
+            wallet=wallet,
+            txn_type='sms_charge',
+            amount=-amount,  # Negative for deduction
+            balance_after=new_balance,
+            description=f"Fake DLR SMS charge (intercepted)",
+            reference=msgid,
+            created_by='fake_dlr_system'
+        )
+        
+        logger.info(f"FAKE DLR WALLET DEDUCTED: uid={uid} amount={amount} new_balance={new_balance}")
+        return True
             
     except Exception as e:
         logger.error(f"Failed to deduct wallet for fake DLR: {e}")
@@ -220,7 +241,7 @@ def fake_dlr_send(
         
         # Deduct from wallet
         if charge > 0:
-            _deduct_wallet_for_fake_dlr(uid, charge)
+            _deduct_wallet_for_fake_dlr(uid, charge, fake_msgid)
     
     return True, fake_msgid
 
