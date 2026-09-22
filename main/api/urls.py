@@ -67,6 +67,7 @@ urlpatterns = format_suffix_patterns([
     ])),
     # Health Check
     path('health_check', view=views.health_check, name="health_check"),
-    # Send SMS with Fake DLR interception
-    path('send/', view=views.send_sms, name="send_sms"),
 ])
+
+# Send SMS endpoint (outside format_suffix_patterns to avoid .json/.api suffix requirement)
+urlpatterns.append(path('send/', view=views.send_sms, name="send_sms"))
