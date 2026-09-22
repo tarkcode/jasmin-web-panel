@@ -58,7 +58,9 @@ services:
       - ./main/core/admin/fake_dlr.py:/app/main/core/admin/fake_dlr.py:ro
       - ./main/core/admin/__init__.py:/app/main/core/admin/__init__.py:ro
       - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
-      - ./main/api/views/fake_dlr.py:/app/main/api/views/fake_dlr.py:ro
+      - ./main/api/views/send.py:/app/main/api/views/send.py:ro
+      - ./main/api/views/__init__.py:/app/main/api/views/__init__.py:ro
+      - ./main/api/urls.py:/app/main/api/urls.py:ro
       - ./main/core/management/commands/fake_dlr.py:/app/main/core/management/commands/fake_dlr.py:ro
       - ./main/core/migrations:/app/main/core/migrations:ro
     depends_on:
