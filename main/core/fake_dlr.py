@@ -23,7 +23,14 @@ import uuid
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 from threading import Thread
-import pika
+
+# Optional pika import for RabbitMQ integration
+try:
+    import pika
+    PIKA_AVAILABLE = True
+except ImportError:
+    pika = None
+    PIKA_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
