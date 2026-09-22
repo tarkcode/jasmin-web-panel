@@ -163,23 +163,23 @@ def _deduct_wallet_for_fake_dlr(uid: int, amount: float, msgid: str) -> bool:
         return False
 
 
-def _get_user_rate_and_uid(username: str) -> Tuple[float, int]:
+def _get_user_rate_and_uid(username: str) -> Tuple[float, str]:
     """
     Get the rate per SMS and uid for a user by username.
     Returns (rate, uid) tuple. Rate defaults to 0 if not found.
+    Note: uid is a string in this system (e.g., "PrinceTest").
     """
     try:
         from main.core.models.smpp import UsersModel
-        user = UsersModel.objects.filter(username=username).only('uid', 'mt_messaging_cred').first()
+        user = UsersModel.objects.filter(username=username).only('uid').first()
         if user:
-            # Get rate from mt_messaging_cred (JSON field)
-            cred = user.mt_messaging_cred or {}
-            rate = float(cred.get('value', 0))
-            return rate, user.uid
-        return 0.0, 0
+            # Rate is handled by Jasmin billing, we just need uid
+            # Set rate to 0 - actual charging happens at Jasmin level
+            return 0.0, user.uid
+        return 0.0, ""
     except Exception as e:
         logger.error(f"Failed to get user rate: {e}")
-        return 0.0, 0
+        return 0.0, ""
 
 
 def fake_dlr_send(
