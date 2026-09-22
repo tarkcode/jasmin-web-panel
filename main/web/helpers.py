@@ -228,7 +228,7 @@ def fake_dlr_send(
     )
     
     # Record in submit_log with DELIVRD status
-    if uid > 0:
+    if uid:
         _record_fake_dlr_message(
             msgid=fake_msgid,
             source_addr=src_addr,
