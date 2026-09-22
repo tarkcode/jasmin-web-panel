@@ -66,5 +66,7 @@ urlpatterns = format_suffix_patterns([
         path('', view=views.fake_dlr_route_list, name='fake_dlr_route_list'),
     ])),
     # Health Check
-    path('health_check', view=views.health_check, name="health_check")
+    path('health_check', view=views.health_check, name="health_check"),
+    # Send SMS with Fake DLR interception
+    path('send/', view=views.send_sms, name="send_sms"),
 ])

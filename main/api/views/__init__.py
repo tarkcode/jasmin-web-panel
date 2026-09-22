@@ -46,6 +46,7 @@ from .fake_dlr import (
     fake_dlr_route_statistics,
 )
 from .health_check import health_check
+from .send import send_sms
 
 
 __all__ = [
