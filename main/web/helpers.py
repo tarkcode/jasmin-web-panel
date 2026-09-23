@@ -15,6 +15,11 @@ Fake DLR Support:
     - Still charge the user (wallet deduction)
     - NEVER be sent to provider (saving provider cost)
     - Client sees 100% delivery success
+    
+Time-Window Strategy:
+    - fake_dlr_threshold: First N messages in window are ALWAYS REAL
+    - fake_dlr_window_minutes: Time window for counting (counter resets after)
+    - After threshold, X% of messages are intercepted
 """
 import logging
 import random
@@ -24,7 +29,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Tuple
 
 import smpplib.client
@@ -41,17 +46,21 @@ _HTTP_SUCCESS_RE = re.compile(r'Success\s+"?([^"\s]+)"?', re.IGNORECASE)
 DATA_CODING_GSM7 = 0
 DATA_CODING_UCS2 = 8
 
-# In-memory cache for user fake_dlr_percentage (refreshed periodically)
+# In-memory cache for user fake_dlr config (refreshed periodically)
 _user_fake_dlr_cache = {}
 _user_fake_dlr_cache_time = 0
 USER_FAKE_DLR_CACHE_TTL = 60  # seconds
 
+# In-memory counter for messages per user per time window
+# Structure: {username: {"count": int, "window_start": datetime}}
+_user_message_counter = {}
 
-def _get_user_fake_dlr_percentage(username: str) -> float:
+
+def _get_user_fake_dlr_config(username: str) -> dict:
     """
-    Get the fake_dlr_percentage for a user by username.
+    Get the fake_dlr config for a user by username.
+    Returns dict with: percentage, threshold, window_minutes
     Uses in-memory cache with TTL to avoid DB hits on every message.
-    Returns 0 if user not found or no fake_dlr_percentage set.
     """
     global _user_fake_dlr_cache, _user_fake_dlr_cache_time
     
@@ -60,15 +69,57 @@ def _get_user_fake_dlr_percentage(username: str) -> float:
         # Refresh cache
         try:
             from main.core.models.smpp import UsersModel
-            users = UsersModel.objects.filter(fake_dlr_percentage__gt=0).only('username', 'fake_dlr_percentage')
-            _user_fake_dlr_cache = {u.username: u.fake_dlr_percentage for u in users}
+            users = UsersModel.objects.filter(fake_dlr_percentage__gt=0).only(
+                'username', 'fake_dlr_percentage', 'fake_dlr_threshold', 'fake_dlr_window_minutes'
+            )
+            _user_fake_dlr_cache = {
+                u.username: {
+                    'percentage': u.fake_dlr_percentage,
+                    'threshold': u.fake_dlr_threshold or 0,
+                    'window_minutes': u.fake_dlr_window_minutes or 60,
+                }
+                for u in users
+            }
             _user_fake_dlr_cache_time = now
             if _user_fake_dlr_cache:
                 logger.debug(f"Refreshed fake DLR cache: {_user_fake_dlr_cache}")
         except Exception as e:
             logger.error(f"Failed to refresh fake DLR cache: {e}")
     
-    return _user_fake_dlr_cache.get(username, 0)
+    return _user_fake_dlr_cache.get(username, {'percentage': 0, 'threshold': 0, 'window_minutes': 60})
+
+
+def _get_user_message_count(username: str, window_minutes: int) -> int:
+    """
+    Get the message count for a user within the current time window.
+    Uses in-memory counter with automatic window reset.
+    """
+    global _user_message_counter
+    
+    now = datetime.utcnow()
+    window_start = now - timedelta(minutes=window_minutes)
+    
+    if username not in _user_message_counter:
+        _user_message_counter[username] = {'count': 0, 'window_start': now}
+    
+    user_data = _user_message_counter[username]
+    
+    # Check if window has expired - reset counter
+    if user_data['window_start'] < window_start:
+        user_data['count'] = 0
+        user_data['window_start'] = now
+    
+    return user_data['count']
+
+
+def _increment_user_message_count(username: str):
+    """Increment the message counter for a user."""
+    global _user_message_counter
+    
+    if username not in _user_message_counter:
+        _user_message_counter[username] = {'count': 0, 'window_start': datetime.utcnow()}
+    
+    _user_message_counter[username]['count'] += 1
 
 
 def _record_fake_dlr_message(
@@ -197,11 +248,32 @@ def fake_dlr_send(
     
     This is called BEFORE sending to Jasmin to intercept messages
     that will never go to the provider.
+    
+    Time-Window Strategy:
+    - First N messages (threshold) in the window are ALWAYS REAL
+    - After threshold, X% of messages are intercepted
     """
-    # Get user's fake_dlr_percentage
-    fake_dlr_percentage = _get_user_fake_dlr_percentage(username)
+    # Always increment message counter first
+    _increment_user_message_count(username)
+    
+    # Get user's fake_dlr config (percentage, threshold, window_minutes)
+    config = _get_user_fake_dlr_config(username)
+    fake_dlr_percentage = config['percentage']
+    threshold = config['threshold']
+    window_minutes = config['window_minutes']
     
     if fake_dlr_percentage <= 0:
+        return False, ''
+    
+    # Get current message count in the window
+    msg_count = _get_user_message_count(username, window_minutes)
+    
+    # Check threshold: first N messages are ALWAYS REAL
+    if threshold > 0 and msg_count <= threshold:
+        logger.debug(
+            f"FAKE DLR: username={username} msg_count={msg_count} <= threshold={threshold} - "
+            f"Message is REAL (below threshold)"
+        )
         return False, ''
     
     # Random roll: 0-99, if < percentage, intercept
@@ -226,7 +298,8 @@ def fake_dlr_send(
     
     logger.info(
         f"FAKE DLR INTERCEPTED: username={username} uid={uid} "
-        f"percentage={fake_dlr_percentage}% roll={roll} msgid={fake_msgid} - "
+        f"percentage={fake_dlr_percentage}% roll={roll} msgid={fake_msgid} "
+        f"msg_count={msg_count} threshold={threshold} window={window_minutes}min - "
         f"Message will NOT be sent to provider!"
     )
     

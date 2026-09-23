@@ -69,6 +69,21 @@ class UsersModel(TimeStampedModel):
         default=0,
         help_text='Percentage of messages to route to Fake DLR (0-100). 0=all real, 20=20% fake delivery reports, 100=all fake.'
     )
+    
+    # Time-window fake DLR settings
+    # First N messages in the window are always REAL, then fake DLR kicks in
+    fake_dlr_threshold = models.IntegerField(
+        'Fake DLR Threshold',
+        default=0,
+        help_text='Number of messages to send as REAL before fake DLR starts. 0=start immediately.'
+    )
+    
+    # Time window in minutes for counting messages (e.g., 60 = 1 hour window)
+    fake_dlr_window_minutes = models.IntegerField(
+        'Fake DLR Window (minutes)',
+        default=60,
+        help_text='Time window in minutes for counting messages. Counter resets after window expires.'
+    )
 
     def __str__(self):
         return self.uid
