@@ -60,6 +60,7 @@ staticfiles
 .env
 env/
 venv/
+.venv/
 db.sqlite3
 
 # Hitch directory
@@ -91,3 +92,6 @@ jasmin-web-key.pem
 # rotated logs (e.g. default-ArkaMKT.log.2026-07-17) — plain *.log already ignored
 logs/*.log.*
 jasmin_config/store/
+
+# Local-only operator notes (never committed/deployed)
+*.local.md

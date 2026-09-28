@@ -36,6 +36,7 @@ import smpplib.client
 import smpplib.consts
 import smpplib.gsm
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -46,33 +47,37 @@ _HTTP_SUCCESS_RE = re.compile(r'Success\s+"?([^"\s]+)"?', re.IGNORECASE)
 DATA_CODING_GSM7 = 0
 DATA_CODING_UCS2 = 8
 
-# In-memory cache for user fake_dlr config (refreshed periodically)
-_user_fake_dlr_cache = {}
-_user_fake_dlr_cache_time = 0
+# Fake DLR config/counter state is stored in Django's cache backend (Redis in
+# prod, see config/settings/com.py) instead of module-level dicts. The app
+# runs behind multiple Gunicorn/Celery worker processes, each with its own
+# Python memory space - a plain dict would give every worker an independent
+# copy of the fake_dlr_percentage cache and the per-window message counter,
+# so a message could keep being routed to the real provider on one worker
+# even after fake DLR was confirmed active/threshold-exceeded on another.
 USER_FAKE_DLR_CACHE_TTL = 60  # seconds
-
-# In-memory counter for messages per user per time window
-# Structure: {username: {"count": int, "window_start": datetime}}
-_user_message_counter = {}
+_FAKE_DLR_CONFIG_CACHE_KEY = "fake_dlr:user_config"
+_FAKE_DLR_COUNTER_KEY_PREFIX = "fake_dlr:msgcount:"
 
 
 def _get_user_fake_dlr_config(username: str) -> dict:
     """
     Get the fake_dlr config for a user by username.
-    Returns dict with: percentage, threshold, window_minutes
-    Uses in-memory cache with TTL to avoid DB hits on every message.
+    Returns dict with: percentage, threshold, window_minutes.
+
+    Stored in Django's shared cache (Redis in prod) so all Gunicorn/Celery
+    worker processes see the same values. TTL-based: on a cache miss the DB
+    is queried once and the full map is written back for USER_FAKE_DLR_CACHE_TTL
+    seconds. A DB error on refresh leaves the existing cached value in place
+    rather than silently falling back to percentage=0.
     """
-    global _user_fake_dlr_cache, _user_fake_dlr_cache_time
-    
-    now = time.time()
-    if now - _user_fake_dlr_cache_time > USER_FAKE_DLR_CACHE_TTL:
-        # Refresh cache
+    config_map = cache.get(_FAKE_DLR_CONFIG_CACHE_KEY)
+    if config_map is None:
         try:
             from main.core.models.smpp import UsersModel
             users = UsersModel.objects.filter(fake_dlr_percentage__gt=0).only(
                 'username', 'fake_dlr_percentage', 'fake_dlr_threshold', 'fake_dlr_window_minutes'
             )
-            _user_fake_dlr_cache = {
+            config_map = {
                 u.username: {
                     'percentage': u.fake_dlr_percentage,
                     'threshold': u.fake_dlr_threshold or 0,
@@ -80,46 +85,34 @@ def _get_user_fake_dlr_config(username: str) -> dict:
                 }
                 for u in users
             }
-            _user_fake_dlr_cache_time = now
-            if _user_fake_dlr_cache:
-                logger.debug(f"Refreshed fake DLR cache: {_user_fake_dlr_cache}")
+            cache.set(_FAKE_DLR_CONFIG_CACHE_KEY, config_map, timeout=USER_FAKE_DLR_CACHE_TTL)
+            if config_map:
+                logger.debug(f"Refreshed fake DLR config cache: {list(config_map.keys())}")
         except Exception as e:
-            logger.error(f"Failed to refresh fake DLR cache: {e}")
-    
-    return _user_fake_dlr_cache.get(username, {'percentage': 0, 'threshold': 0, 'window_minutes': 60})
+            logger.error(f"Failed to refresh fake DLR config cache: {e}")
+            config_map = {}
+
+    return config_map.get(username, {'percentage': 0, 'threshold': 0, 'window_minutes': 60})
 
 
-def _get_user_message_count(username: str, window_minutes: int) -> int:
+def _increment_user_message_count(username: str, window_minutes: int) -> int:
     """
-    Get the message count for a user within the current time window.
-    Uses in-memory counter with automatic window reset.
+    Atomically increment the message counter for a user and return the new
+    count. Uses cache.add to seed the key with a TTL on first use, then
+    cache.incr for atomic increments so concurrent requests across workers
+    don't race and undercount.
     """
-    global _user_message_counter
-    
-    now = datetime.utcnow()
-    window_start = now - timedelta(minutes=window_minutes)
-    
-    if username not in _user_message_counter:
-        _user_message_counter[username] = {'count': 0, 'window_start': now}
-    
-    user_data = _user_message_counter[username]
-    
-    # Check if window has expired - reset counter
-    if user_data['window_start'] < window_start:
-        user_data['count'] = 0
-        user_data['window_start'] = now
-    
-    return user_data['count']
+    key = _FAKE_DLR_COUNTER_KEY_PREFIX + username
+    window_seconds = max(int(window_minutes), 1) * 60
 
-
-def _increment_user_message_count(username: str):
-    """Increment the message counter for a user."""
-    global _user_message_counter
-    
-    if username not in _user_message_counter:
-        _user_message_counter[username] = {'count': 0, 'window_start': datetime.utcnow()}
-    
-    _user_message_counter[username]['count'] += 1
+    # Seed the counter if it doesn't exist yet (sets the TTL for this window).
+    cache.add(key, 0, timeout=window_seconds)
+    try:
+        return cache.incr(key)
+    except ValueError:
+        # Key expired between add() and incr() in a race; seed and retry once.
+        cache.add(key, 0, timeout=window_seconds)
+        return cache.incr(key)
 
 
 def _record_fake_dlr_message(
@@ -168,7 +161,7 @@ def _record_fake_dlr_message(
         return False
 
 
-def _deduct_wallet_for_fake_dlr(uid: int, amount: float, msgid: str) -> bool:
+def _deduct_wallet_for_fake_dlr(uid: str, amount: float, msgid: str) -> bool:
     """
     Deduct the wallet balance for a fake DLR message.
     This ensures the client is still charged even though the message
@@ -239,86 +232,79 @@ def fake_dlr_send(
     text: str,
     username: str,
     rate: float = None,
-    uid: int = None,
+    uid: str = None,
 ) -> Tuple[bool, str]:
     """
     Check if this message should be intercepted for fake DLR.
     If yes, record it and return (True, fake_msgid).
     If no, return (False, '').
-    
-    This is called BEFORE sending to Jasmin to intercept messages
-    that will never go to the provider.
-    
+
+    Called BEFORE sending to Jasmin. Config is fetched first so that
+    window_minutes is available for the counter increment; the counter is
+    then incremented atomically in Redis so all workers share the same tally.
+
     Time-Window Strategy:
     - First N messages (threshold) in the window are ALWAYS REAL
     - After threshold, X% of messages are intercepted
     """
-    # Always increment message counter first
-    _increment_user_message_count(username)
-    
-    # Get user's fake_dlr config (percentage, threshold, window_minutes)
+    # Fetch config first — we need window_minutes before incrementing.
     config = _get_user_fake_dlr_config(username)
     fake_dlr_percentage = config['percentage']
     threshold = config['threshold']
     window_minutes = config['window_minutes']
-    
+
     if fake_dlr_percentage <= 0:
         return False, ''
-    
-    # Get current message count in the window
-    msg_count = _get_user_message_count(username, window_minutes)
-    
-    # Check threshold: first N messages are ALWAYS REAL
+
+    # Atomically increment the shared counter and get the new value.
+    msg_count = _increment_user_message_count(username, window_minutes)
+
+    # Check threshold: first N messages in the window are always real.
     if threshold > 0 and msg_count <= threshold:
         logger.debug(
             f"FAKE DLR: username={username} msg_count={msg_count} <= threshold={threshold} - "
-            f"Message is REAL (below threshold)"
+            f"below threshold, sending real"
         )
         return False, ''
-    
-    # Random roll: 0-99, if < percentage, intercept
+
+    # Random roll: 0-99; intercept if roll < percentage.
     roll = random.randint(0, 99)
-    
     if roll >= fake_dlr_percentage:
-        # Not intercepted, proceed normally
         return False, ''
-    
-    # FAKE DLR TRIGGERED!
-    # Generate a fake message ID
+
+    # --- FAKE DLR TRIGGERED ---
     fake_msgid = f"FAKE-{uuid.uuid4().hex[:16].upper()}"
-    
-    # Get user's rate and uid if not provided
-    if rate is None or uid is None:
-        rate_from_db, uid_from_db = _get_user_rate_and_uid(username)
-        rate = rate if rate is not None else rate_from_db
-        uid = uid if uid is not None else uid_from_db
-    
-    # Calculate charge (rate * 1 message)
-    charge = rate
-    
+
+    # Resolve uid if the caller didn't pass one.
+    if uid is None:
+        _rate, uid = _get_user_rate_and_uid(username)
+
+    # rate/charge: Jasmin handles the actual per-SMS billing via its own
+    # mt_messaging_cred quota; there is no rate field on UsersModel.
+    # We record 0 here so submit_log stays consistent.  If a per-SMS rate
+    # is added to UsersModel in the future, plumb it through _get_user_rate_and_uid.
+    charge = rate if rate is not None else 0.0
+
     logger.info(
         f"FAKE DLR INTERCEPTED: username={username} uid={uid} "
         f"percentage={fake_dlr_percentage}% roll={roll} msgid={fake_msgid} "
         f"msg_count={msg_count} threshold={threshold} window={window_minutes}min - "
-        f"Message will NOT be sent to provider!"
+        f"message will NOT be sent to provider"
     )
-    
-    # Record in submit_log with DELIVRD status
+
     if uid:
         _record_fake_dlr_message(
             msgid=fake_msgid,
             source_addr=src_addr,
             destination_addr=dst_addr,
             uid=uid,
-            rate=rate,
+            rate=charge,
             charge=charge,
             short_message=text[:500] if text else "",
         )
-        
-        # Deduct from wallet
         if charge > 0:
             _deduct_wallet_for_fake_dlr(uid, charge, fake_msgid)
-    
+
     return True, fake_msgid
 
 
